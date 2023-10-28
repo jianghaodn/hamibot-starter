@@ -8,5 +8,10 @@
  */
 import {} from "./global";
 import { init } from "./lib/init";
+import { browser } from "./modules/browser";
+import {VO} from "./tools/tool"
 
 init();
+console.log(browser.name);
+console.log('测试tool工具箱');
+browser.run()
