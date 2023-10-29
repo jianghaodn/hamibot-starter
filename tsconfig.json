@@ -16,5 +16,6 @@
         "noImplicitAny": false,
 		"noUnusedParameters": true,
 		"noFallthroughCasesInSwitch": true,
+        "strictNullChecks": false//关闭空检查
     }
 }

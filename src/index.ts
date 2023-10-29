@@ -11,13 +11,10 @@ import { init } from "./lib/init";
 import { browser, _browser } from "./modules/browser";
 import { VO } from "./tools/tool"
 import { quyue, _quyue } from "./modules/quyue";
+import { mode,MODE } from "./MODE";
 
 init();
-enum MODE {
-    TEST, RELEASE
-}
 
-let mode = MODE.TEST
 
 console.log('测试tool工具箱');
 if (mode === MODE.TEST) {
@@ -29,14 +26,20 @@ if (mode === MODE.TEST) {
         browser.run()
     } catch (error) {
         VO.log(error)
-    }finally{
+    } finally {
         home()
+        sleep(3000)
     }
     try {
         quyue.run()
     } catch (error) {
-    VO.log(error)        
-    }finally{
+        VO.log(error)
+    } finally {
         home()
+        sleep(3000)
     }
 }
+
+VO.log("任务已经全部运行完毕了")
+VO.log("脚本窗口将在10秒后关闭")
+sleep(10*1000)
