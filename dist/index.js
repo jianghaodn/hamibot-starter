@@ -792,6 +792,13 @@ function init() {
 var v = function v() {};
 
 var VO = new v();
+var ENTER;
+
+(function (ENTER) {
+  ENTER[ENTER["SUCCESS"] = 0] = "SUCCESS";
+  ENTER[ENTER["FAIL"] = 1] = "FAIL";
+  ENTER[ENTER["ERROR"] = 2] = "ERROR";
+})(ENTER || (ENTER = {}));
 
 v.prototype.request = function () {
   if (device.sdkInt > 28) {
@@ -813,10 +820,19 @@ v.prototype.request = function () {
 };
 
 v.prototype.log = function (msg) {
-  msg = msg + "";
-  console.log(msg);
-  toast(msg);
-  hamibot.postMessage(msg);
+  var log_msg = "";
+
+  if (arguments.length != 1) {
+    for (var i = 0; i < arguments.length; i++) {
+      log_msg += arguments[i];
+    }
+  } else {
+    log_msg = msg;
+  }
+
+  console.log(log_msg);
+  toast(log_msg);
+  hamibot.postMessage(log_msg);
 };
 
 v.prototype.get_time = function () {
@@ -844,8 +860,8 @@ v.prototype.hasAll = function (node) {
   return node.find();
 };
 
-v.prototype.hasOne = function (node) {
-  return node.findOne(1000);
+v.prototype.hasOne = function (node, timeOut) {
+  return node.findOne(timeOut || 1000);
 };
 
 v.prototype.get_node = function (name) {
@@ -875,6 +891,18 @@ v.prototype.prepare = function () {
   VO.show_console();
 };
 
+v.prototype.clickOnBound = function (obj) {
+  if (obj instanceof UiObject) {
+    var bounds_1 = obj.bounds();
+    VO.log(bounds_1);
+    click((bounds_1.left + bounds_1.right) / 2, (bounds_1.top + bounds_1.bottom) / 2);
+  } else if (obj instanceof Rect) {
+    click((obj.left + obj.right) / 2, (obj.top + obj.bottom) / 2);
+  } else if (obj instanceof Object) {} else {
+    VO.log("你传的是啥玩意儿对象，假的");
+  }
+};
+
 v.prototype.clickNodeNotNull = function (node, msg) {
   if (!node) {
     VO.log("不存在此节点");
@@ -884,9 +912,7 @@ v.prototype.clickNodeNotNull = function (node, msg) {
   try {
     if (!node.click()) {
       VO.log("click失败，更改方式");
-      var bounds_1 = node.bounds();
-      log(bounds_1);
-      click((bounds_1.left + bounds_1.right) / 2, (bounds_1.top + bounds_1.bottom) / 2);
+      VO.clickOnBound(node);
     }
 
     VO.log("click成功");
@@ -906,7 +932,7 @@ v.prototype.clickNode = function (node) {
 };
 
 v.prototype.backToPage = function (pageNode, timeOut) {
-  while (pageNode && !VO.hasOne(pageNode)) {
+  while (pageNode && !VO.hasOne(pageNode, 10)) {
     back();
     sleep(timeOut || 1000);
   }
@@ -936,8 +962,40 @@ var activity = function () {
   return activity;
 }();
 
+
 var activity_list = [];
-activity_list.push(new activity("逛一逛领金币", textContains("逛一逛")), new activity("下载推荐应用领金币", textContains("我要金币")), new activity("幸运抽大奖", textContains("去抽奖"), true), new activity("日常福利", undefined, false), new activity("点击搜索词领金币", text("随机搜索得金币")));
+activity_list.push(new activity("逛一逛领金币", textContains("逛一逛")), new activity("点击搜索词领金币", text("随机搜索得金币")), new activity("下载推荐应用领金币", textContains("我要金币")), new activity("幸运抽大奖", textContains("去抽奖"), true), new activity("日常福利", undefined, false));
+
+var 进入活动主页面 = function 进入活动主页面() {
+  var enter_state;
+  var re = app.launch("com.vivo.vreader");
+
+  if (!re) {
+    VO.log("打开 应用 失败");
+    enter_state = ENTER.FAIL;
+  } else {
+    VO.log("打开应用成功");
+    enter_state = ENTER.SUCCESS;
+
+    if (!VO.atPage(id("cl_novel_search_bar_welfare_container"))) {
+      var goal_node = id("welfare_txt").text("福利");
+
+      if (VO.hasNode(goal_node, 2000)) {
+        VO.clickNodeNotNull(goal_node);
+        sleep(2000);
+
+        if (!VO.atPage(id("cl_novel_search_bar_welfare_container"))) {
+          VO.log("进入失败，无法进入");
+          enter_state = ENTER.FAIL;
+        } else {
+          VO.log("已经进入任务主页面，开始脚本");
+        }
+      }
+    }
+  }
+
+  return enter_state;
+};
 
 var 逛一逛 = function 逛一逛() {
   return "任务不划算暂时不做";
@@ -947,15 +1005,32 @@ var 逛一逛 = function 逛一逛() {
   }
 };
 
-var 下载推荐应用领金币 = function 下载推荐应用领金币() {
+var 下载推荐应用领金币 = function 下载推荐应用领金币(obj) {
   var mainPage = text("互动领奖专区");
   var packageName = "com.vivo.browser";
-  var browserPage = id("cl_novel_search_bar_welfare_container");
+  var browserPage = (obj === null || obj === void 0 ? void 0 : obj.goalPage) || id("cl_novel_search_bar_welfare_container");
   var flag1 = 0,
       flag2 = 0;
-  var count = 5;
+  var f1_max = 20,
+      f2_max = 30;
+  var count = (obj === null || obj === void 0 ? void 0 : obj.all_count) || 5;
   var running = true;
-  var keys = ["打开领奖", "搜索领奖"];
+  var data = obj === null || obj === void 0 ? void 0 : obj.data;
+
+  if (data && data.length) {
+    for (var _i = 0, data_1 = data; _i < data_1.length; _i++) {
+      var d = data_1[_i];
+
+      if (d.name === "打开领奖") {
+        f1_max = d.count;
+      } else if (d.name === "搜索领奖") {
+        f1_max = d.count;
+      }
+    }
+  }
+
+  var keys = (obj === null || obj === void 0 ? void 0 : obj.ks) || ["打开领奖", "搜索领奖"];
+  VO.log("运行任务keys:", keys.join("&"));
 
   flag: while (count--) {
     while (!VO.atPage(mainPage)) {
@@ -972,15 +1047,15 @@ var 下载推荐应用领金币 = function 下载推荐应用领金币() {
       sleep(1000);
     }
 
-    for (var _i = 0, keys_1 = keys; _i < keys_1.length; _i++) {
-      var key = keys_1[_i];
+    for (var _a = 0, keys_1 = keys; _a < keys_1.length; _a++) {
+      var key = keys_1[_a];
 
-      if (flag1 > 20 && key === "打开领奖" || key === "搜索领奖" && flag2 > 30) {
-        continue;
+      if (flag1 >= f1_max && flag2 >= f2_max) {
+        break flag;
       }
 
-      if (flag1 >= 20 && flag2 >= 30) {
-        break flag;
+      if (key === "打开领奖" && flag1 >= f1_max || key === "搜索领奖" && flag2 >= f2_max) {
+        continue;
       }
 
       sleep(1000);
@@ -996,9 +1071,11 @@ var 下载推荐应用领金币 = function 下载推荐应用领金币() {
           flag1++;
           sleep(1000);
           VO.backToPage(mainPage);
+          VO.log("等待5秒");
           sleep(5000);
         } else if (key === "搜索领奖") {
           flag2++;
+          VO.log("等待10秒");
           sleep(10 * 1000);
           VO.backToPage(mainPage, 2000);
         } else {
@@ -1060,11 +1137,13 @@ var 点击搜索词领金币 = function 点击搜索词领金币() {
 
     if (VO.hasNode(node)) {
       var count = getSearchCount();
+      var sleep_time = 12 * MS;
 
       while (count--) {
         node.waitFor();
         VO.clickNodeNotNull(node.findOne(1000));
-        sleep(12 * MS);
+        VO.log("\u7B49\u5F85".concat(sleep_time, "\u79D2"));
+        sleep(sleep_time);
         random_swipe();
         back();
         sleep(MS * 3);
@@ -1105,18 +1184,154 @@ var browser = {
   object: activity_list,
   run: function run() {
     VO.log("browser开始运行");
+    进入活动主页面();
 
-    _run();
+    if (currentPackage() === "com.vivo.browser") {
+      _run();
+    } else {
+      VO.log("不在浏览器中，运行结束");
+    }
 
     VO.log("browser运行结束");
+  },
+  browser_下载推荐应用领金币: function browser_下载推荐应用领金币(obj) {
+    下载推荐应用领金币(obj);
+  }
+};
+var _browser = {
+  name: "测试浏览器环境",
+  run: function run() {
+    var re = 进入活动主页面();
+    VO.log("输出测试结果:", re);
+  }
+};
+;// CONCATENATED MODULE: ./src/modules/quyue.ts
+var quyue_extends = undefined && undefined.__extends || function () {
+  var _extendStatics = function extendStatics(d, b) {
+    _extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) {
+        if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p];
+      }
+    };
+
+    return _extendStatics(d, b);
+  };
+
+  return function (d, b) {
+    if (typeof b !== "function" && b !== null) throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+
+    _extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  };
+}();
+
+
+
+
+var activity_quyue = function (_super) {
+  quyue_extends(activity_quyue, _super);
+
+  function activity_quyue(name, node, count, run) {
+    if (run === void 0) {
+      run = true;
+    }
+
+    var _this = _super.call(this, name, node, run) || this;
+
+    _this.run_count = count;
+    return _this;
+  }
+
+  return activity_quyue;
+}(activity);
+
+var quyue_activity_list = [];
+quyue_activity_list.push(new activity_quyue("下应用领金币", text("我要金币-按钮-点按两次即可激活"), 6, true), new activity_quyue("看视频领海量金币", text("立即观看-按钮-点按两次即可激活"), -1));
+
+var quyue_ = function 进入活动主页面() {};
+
+var 下应用领金币 = function 下应用领金币() {
+  browser["browser_下载推荐应用领金币"]({
+    ks: ['搜索领奖'],
+    data: [{
+      name: "搜索领奖",
+      count: 30
+    }],
+    all_count: 6,
+    goalPage: id("gold_coin_chest_time")
+  });
+};
+
+var 看视频领海量金币 = function 看视频领海量金币() {
+  var get_runcount = function get_runcount() {};
+};
+
+var quyue_run = function _run() {
+  for (var _i = 0, activity_list_1 = quyue_activity_list; _i < activity_list_1.length; _i++) {
+    var obj = activity_list_1[_i];
+
+    switch (obj.name) {
+      case "下应用领金币":
+        下应用领金币();
+        break;
+
+      case "看视频领海量金币":
+        看视频领海量金币();
+        break;
+
+      default:
+        break;
+    }
+  }
+};
+
+var quyue = {
+  name: "趣悦",
+  run: function run() {
+    VO.log("运行趣悦脚本");
+    if (currentPackage() === "com.vivo.vreader") quyue_run();else {
+      VO.log("不在趣悦界面");
+    }
+    VO.log("趣悦脚本运行完毕");
+  }
+};
+var _quyue = {
+  name: "趣悦测试环境",
+  run: function run() {
+    quyue_();
   }
 };
 ;// CONCATENATED MODULE: ./src/index.ts
 
 
+
 init();
-console.log(browser.name);
+var MODE;
+
+(function (MODE) {
+  MODE[MODE["TEST"] = 0] = "TEST";
+  MODE[MODE["RELEASE"] = 1] = "RELEASE";
+})(MODE || (MODE = {}));
+
+var mode = MODE.TEST;
 console.log('测试tool工具箱');
-browser.run();
+
+if (mode === MODE.TEST) {
+  _browser.run();
+
+  _quyue.run();
+} else {
+  browser.run();
+  quyue.run();
+}
 /******/ })()
 ;

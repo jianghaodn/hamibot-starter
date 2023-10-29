@@ -4,7 +4,8 @@
  * @date 2023年10月27日16点01分
  */
 import { time } from "console";
-import { VO } from "../tools/tool";
+import { VO, ENTER } from "../tools/tool";
+import { activityDoNotDoException } from "../exception/exceptions";
 
 class activity {
     public name: String;
@@ -17,6 +18,8 @@ class activity {
     }
 }
 
+export { activity }
+
 let activity_list = [] as activity[];
 activity_list.push(
     new activity("逛一逛领金币", textContains("逛一逛")),
@@ -24,8 +27,41 @@ activity_list.push(
     new activity("下载推荐应用领金币", textContains("我要金币")),
     new activity("幸运抽大奖", textContains("去抽奖"), true),
     new activity("日常福利", undefined, false),
-    
+
 );
+
+
+const 进入活动主页面 = () => {
+    //TODO 进入活动主页面
+
+    let enter_state: ENTER
+    const re = app.launch("com.vivo.vreader")
+    if (!re) {
+        VO.log("打开 应用 失败")
+        enter_state = ENTER.FAIL
+    } else {
+        VO.log("打开应用成功")
+        enter_state = ENTER.SUCCESS
+        if(!VO.atPage(id("cl_novel_search_bar_welfare_container"))){
+            //尝试进入活动页面
+            const goal_node = id("welfare_txt").text("福利")
+            if(VO.hasNode(goal_node,2000)){
+                VO.clickNodeNotNull(goal_node)
+                sleep(2000)
+                if(!VO.atPage(id("cl_novel_search_bar_welfare_container"))){
+                    VO.log("进入失败，无法进入")
+                    enter_state =  ENTER.FAIL
+                }else{
+                    VO.log("已经进入任务主页面，开始脚本")
+                }
+                //进入成功，继续脚本
+            }
+        }
+    }
+
+    return enter_state
+}
+
 
 const 逛一逛 = () => {
     return "任务不划算暂时不做";
@@ -34,22 +70,43 @@ const 逛一逛 = () => {
     }
 };
 
-const 下载推荐应用领金币 = () => {
+
+/**
+ * 
+ * @param obj {data:[{}],ks:[], all_count:6 ,goalPage:node}
+ * @returns 
+ */
+const 下载推荐应用领金币 = (obj?: any) => {
     const mainPage = text("互动领奖专区");
     const packageName = "com.vivo.browser";
-    const browserPage = id("cl_novel_search_bar_welfare_container");
+    const browserPage = obj?.goalPage || id("cl_novel_search_bar_welfare_container");
     let flag1 = 0, //打开领奖
         flag2 = 0; //搜索领奖
-    let count = 5; //总运行次数
+    let f1_max = 20, f2_max = 30//最大运行次数
+    let count = obj?.all_count || 5; //总运行次数
     let running = true;
+    /*
+    obj.data:
+        [{
+            name:"打开领奖",
+            count:20
+        }]
+    */
+    const data = obj?.data
 
-    const keys = ["打开领奖", "搜索领奖"];
-    //   threads.start(() => {
-    //     while (packageName && currentPackage() != packageName && running) {
-    //       app.launchPackage(packageName);
-    //       sleep(1000);
-    //     }
-    //   });
+    //设置f1和f2的数量
+    if (data && data.length) {
+        for (const d of data) {
+            if (d.name === "打开领奖") {
+                f1_max = d.count
+            } else if (d.name === "搜索领奖") {
+                f1_max = d.count
+            }
+        }
+    }
+
+    const keys = obj?.ks || ["打开领奖", "搜索领奖"];
+    VO.log("运行任务keys:", keys.join("&"));
     flag: while (count--) {
         while (!VO.atPage(mainPage)) {
             VO.log("当前不在页面");
@@ -64,13 +121,11 @@ const 下载推荐应用领金币 = () => {
             // VO.hasOne(textContains("逛一逛")) &&  VO.clickNode(textContains("逛一逛")) || (VO.log("没有在任务界面，且无法进入任务，退出"))
         }
         for (const key of keys) {
-            if (
-                (flag1 > 20 && key === "打开领奖") || (key === "搜索领奖" && flag2 > 30)
-            ) {
-                continue;
-            }
-            if (flag1 >= 20 && flag2 >= 30) {
+            if (flag1 >= f1_max && flag2 >= f2_max) {
                 break flag;
+            }
+            if ((key === "打开领奖" && flag1 >= f1_max) || (key === "搜索领奖" && flag2 >= f2_max)) {
+                continue;
             }
             sleep(1000);
             const keyNodes = textContains(key).find();
@@ -84,9 +139,11 @@ const 下载推荐应用领金币 = () => {
                     flag1++;
                     sleep(1000);
                     VO.backToPage(mainPage);
+                    VO.log("等待5秒")
                     sleep(5000);
                 } else if (key === "搜索领奖") {
                     flag2++;
+                    VO.log("等待10秒")
                     sleep(10 * 1000);
                     VO.backToPage(mainPage, 2000);
                 } else {
@@ -157,10 +214,12 @@ const 点击搜索词领金币 = () => {
             //有随机搜索得金币的按钮
             //获取浏览次数
             let count = getSearchCount()
+            const sleep_time = 12 * MS
             while (count--) {
                 node.waitFor()
                 VO.clickNodeNotNull(node.findOne(1000))
-                sleep(12 * MS)
+                VO.log(`等待${sleep_time}秒`)
+                sleep(sleep_time)
                 //模拟随机滑动
                 random_swipe()
                 back()
@@ -194,12 +253,36 @@ const _run = function () {
     }
 };
 
+const pre = ()=>{
+    VO.log("browser开始运行");
+    if(进入活动主页面() !== ENTER.SUCCESS){
+        throw new activityDoNotDoException("无法执行该任务")
+    }
+}
+
 export const browser = {
     name: "浏览器脚本任务",
     object: activity_list,
     run: () => {
-        VO.log("browser开始运行");
-        _run();
+        pre();
+        if (currentPackage() === "com.vivo.browser") {
+            _run();
+        } else {
+            VO.log("不在浏览器中，运行结束")
+        }
         VO.log("browser运行结束");
     },
+    browser_下载推荐应用领金币: (obj: any) => {
+        下载推荐应用领金币(obj)
+    },
 };
+
+
+
+export const _browser = {
+    name: "测试浏览器环境",
+    run() {
+        const re = 进入活动主页面()        
+        VO.log("输出测试结果:",re)
+    }
+}

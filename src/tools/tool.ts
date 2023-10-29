@@ -5,6 +5,10 @@ let v = function () { };
 
 const VO = new v();
 
+enum ENTER {
+  SUCCESS,FAIL,ERROR,
+}
+
 /**
  * 申请截图权限，脚本第一行调用
  * @returns 0：成功；-1：失败
@@ -32,10 +36,19 @@ v.prototype.request = function () {
  * @param {打印信息} msg
  */
 v.prototype.log = function (msg) {
-  msg = msg + "";
-  console.log(msg);
-  toast(msg);
-  hamibot.postMessage(msg);
+  let log_msg = ""
+
+  if (arguments.length != 1) {
+    //获取全部的参数
+    for (let i = 0; i < arguments.length; i++) {
+      log_msg += arguments[i]
+    }
+  } else {
+    log_msg = msg
+  }
+  console.log(log_msg);
+  toast(log_msg);
+  hamibot.postMessage(log_msg);
 };
 
 v.prototype.get_time = function () {
@@ -79,8 +92,8 @@ v.prototype.hasAll = function (node) {
  * @param {节点} node
  * @returns
  */
-v.prototype.hasOne = function (node) {
-  return node.findOne(1000);
+v.prototype.hasOne = function (node: UiSelector, timeOut?: number) {
+  return node.findOne(timeOut || 1000);
 };
 
 v.prototype.get_node = function (name) {
@@ -90,7 +103,7 @@ v.prototype.get_node = function (name) {
 /**
  * 显示控制台
  */
-v.prototype.show_console = function (SHOW_CONSOLE) {
+v.prototype.show_console = function (SHOW_CONSOLE: any) {
   // 显示控制台
   if (SHOW_CONSOLE) {
     console.show();
@@ -120,7 +133,20 @@ v.prototype.prepare = function () {
   VO.show_console();
 };
 
-v.prototype.clickNodeNotNull = (node, msg) => {
+v.prototype.clickOnBound = (obj: any) => {
+  if (obj instanceof UiObject) {
+    const bounds = obj.bounds();
+    VO.log(bounds);
+    click((bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2);
+  } else if (obj instanceof Rect) {
+    click((obj.left + obj.right) / 2, (obj.top + obj.bottom) / 2);
+  }else if(obj instanceof Object) {
+  } else {
+    VO.log("你传的是啥玩意儿对象，假的")
+  }
+}
+
+v.prototype.clickNodeNotNull = (node: UiObject, msg: String) => {
   if (!node) {
     VO.log("不存在此节点");
     return;
@@ -129,9 +155,7 @@ v.prototype.clickNodeNotNull = (node, msg) => {
     if (!node.click()) {
       //如果点击失败（多半是因为节点不可点击），点击该节点的坐标
       VO.log("click失败，更改方式");
-      const bounds = node.bounds();
-      log(bounds);
-      click((bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2);
+      VO.clickOnBound(node)
     }
     VO.log("click成功");
     msg && VO.log(msg);
@@ -144,18 +168,18 @@ v.prototype.clickNodeNotNull = (node, msg) => {
  * 检测是否在指定页面
  * @param {node} pageNode 指定页面的指定节点
  */
-v.prototype.atPage = (pageNode) => {
+v.prototype.atPage = (pageNode:UiSelector) => {
   return pageNode && pageNode.exists();
 };
 
-v.prototype.clickNode = (node) => {
+v.prototype.clickNode = (node:UiSelector) => {
   const nodeInfo = node.findOne(1000);
   VO.clickNodeNotNull(nodeInfo);
 };
 
 v.prototype.backToPage = (pageNode, timeOut?: number) => {
 
-  while (pageNode && !VO.hasOne(pageNode)) {
+  while (pageNode && !VO.hasOne(pageNode, 10)) {
     back();
     sleep(timeOut || 1000);
   }
@@ -163,8 +187,8 @@ v.prototype.backToPage = (pageNode, timeOut?: number) => {
 };
 
 
-v.prototype.hasNode = (node) => {
+v.prototype.hasNode = (node:UiSelector) => {
   return node && node.exists()
 }
 
-export { VO };
+export { VO,ENTER };
