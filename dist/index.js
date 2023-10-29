@@ -1296,6 +1296,8 @@ var 进入活动主页面 = function 进入活动主页面() {
   var enter_state = ENTER.SUCCESS;
 
   if (!VO.atPage(goalPage)) {
+    VO.closeApp("com.vivo.browser");
+
     if (!app.launch("com.vivo.browser")) {
       VO.log("打开 浏览器 失败");
       enter_state = ENTER.FAIL;
@@ -1389,14 +1391,13 @@ var 下载推荐应用领金币 = function 下载推荐应用领金币(obj) {
         f1_max = parseInt((count_node1 === null || count_node1 === void 0 ? void 0 : count_node1.text().split("/")[1]) || "0") / f1_single;
       }
 
-      if (VO.hasOne(text("点击搜索词并浏览8秒领金币".trim()), defaultWaitTime)) {
-        var count_node2 = (_d = (_c = text("点击搜索词并浏览8秒领金币").findOne(5000)) === null || _c === void 0 ? void 0 : _c.parent()) === null || _d === void 0 ? void 0 : _d.child(2);
+      if (VO.hasOne(text("点击搜索词并浏览8秒领金币"), defaultWaitTime)) {
+        var count_node2 = (_d = (_c = className("android.widget.TextView").text("点击搜索词并浏览8秒领金币").findOne(3000)) === null || _c === void 0 ? void 0 : _c.parent()) === null || _d === void 0 ? void 0 : _d.child(9);
+        VO.log(count_node2);
         flag2 = parseInt((count_node2 === null || count_node2 === void 0 ? void 0 : count_node2.text().split("/")[0]) || "0") / f2_single;
         f2_max = parseInt((count_node2 === null || count_node2 === void 0 ? void 0 : count_node2.text().split("/")[1]) || "0") / f2_single;
       }
-    }
-
-    if (currentPackage() === PACKAGE.BROWSER) {
+    } else if (currentPackage() === PACKAGE.BROWSER) {
       var str1 = "免费领奖，已领取.*金币，最高可获得.*金币，打开以下内容即可获取奖励";
       var str2 = "点击搜索词领金币，已领取0金币，最高可获得3000金币，搜索下方内容并浏览结果页8秒，即可获得奖励";
 

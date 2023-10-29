@@ -36,7 +36,9 @@ const 进入活动主页面 = () => {
 
     let enter_state = ENTER.SUCCESS
 
-    if (!VO.atPage(goalPage)) {
+    if (!VO.atPage(goalPage)) {//不在任务界面，自动进入任务界面
+        //关闭浏览器
+        VO.closeApp("com.vivo.browser")
         if (!app.launch("com.vivo.browser")) {
             VO.log("打开 浏览器 失败")
             enter_state = ENTER.FAIL
@@ -138,14 +140,16 @@ const 下载推荐应用领金币 = (obj?: any) => {
                 f1_max = parseInt(count_node1?.text().split("/")[1] || "0") / f1_single
                 // throw new BaseException("测试结束")
             }
-            if (VO.hasOne(text("点击搜索词并浏览8秒领金币".trim()), defaultWaitTime)) {
-                const count_node2 = text("点击搜索词并浏览8秒领金币").findOne(5000)?.parent()?.child(2)
+            if (VO.hasOne(text("点击搜索词并浏览8秒领金币"), defaultWaitTime)) {
+                const count_node2 = className("android.widget.TextView").text("点击搜索词并浏览8秒领金币").findOne(3000)?.parent()?.child(9)
+                VO.log(count_node2)
                 flag2 = parseInt(count_node2?.text().split("/")[0] || "0") / f2_single
                 f2_max = parseInt(count_node2?.text().split("/")[1] || "0") / f2_single
                 // throw new BaseException("测试结束")
             }
         }
-        if (currentPackage() === PACKAGE.BROWSER) {
+        //是浏览器
+        else if (currentPackage() === PACKAGE.BROWSER) {
             const str1 = "免费领奖，已领取.*金币，最高可获得.*金币，打开以下内容即可获取奖励"
             const str2 = "点击搜索词领金币，已领取0金币，最高可获得3000金币，搜索下方内容并浏览结果页8秒，即可获得奖励"
             if (VO.hasOne(text(str1), defaultWaitTime)) {
@@ -325,9 +329,7 @@ const _run = function () {
 
 const pre = () => {
     VO.log("browser开始运行");
-    //关闭浏览器
-    //暂时不关闭浏览器，因为无法自动化的进入活动页面，需要手动进入
-    // VO.closeApp("com.vivo.browser")
+
     if (进入活动主页面() !== ENTER.SUCCESS) {
         throw new activityDoNotDoException("无法执行该浏览器任务")
     }
