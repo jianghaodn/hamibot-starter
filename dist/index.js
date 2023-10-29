@@ -806,7 +806,9 @@ var tool = function () {
 
       var log_msg = "";
 
-      if (params && params.length != 1) {
+      if (params && params.length != 0) {
+        log_msg += msg;
+
         for (var i = 0; i < params.length; i++) {
           log_msg += params[i];
         }
@@ -897,35 +899,34 @@ var tool = function () {
     };
 
     this.clickOnBound = function (obj) {
-      if (obj instanceof UiObject) {
-        var bounds_1 = obj.bounds();
-
-        _this.log(bounds_1);
-
-        click((bounds_1.left + bounds_1.right) / 2, (bounds_1.top + bounds_1.bottom) / 2);
-      } else if (obj instanceof Rect) {
-        click((obj.left + obj.right) / 2, (obj.top + obj.bottom) / 2);
-      } else {
-        VO.log("你传的是啥玩意儿对象，假的");
-      }
+      var bounds = obj.bounds();
+      VO.log(bounds.left, ",", bounds.right, ",", bounds.top, ",", bounds.bottom);
+      var x = Math.floor((bounds.left + bounds.right) / 2) + 2;
+      var y = Math.floor((bounds.top + bounds.bottom) / 2) + 2;
+      click(bounds.left, bounds.top, bounds.bottom, bounds.right);
     };
 
     this.clickNodeNotNull = function (node, msg) {
       if (!node) {
-        VO.log("不存在此节点");
+        _this.log("不存在此节点");
+
         return;
       }
 
       try {
         if (!node.click()) {
-          VO.log("click失败，更改方式");
-          VO.clickOnBound(node);
+          _this.log("click失败，更改方式");
+
+          sleep(1000);
+
+          _this.clickOnBound(node);
         }
 
-        VO.log("click成功");
+        _this.log("click成功");
+
         msg && VO.log(msg);
       } catch (e) {
-        VO.log(e);
+        _this.log(e);
       }
     };
 
@@ -934,7 +935,7 @@ var tool = function () {
     };
 
     this.clickNode = function (node) {
-      var nodeInfo = node.findOne(1000);
+      var nodeInfo = node.findOne(10);
 
       _this.clickNodeNotNull(nodeInfo);
     };
@@ -954,6 +955,9 @@ var tool = function () {
     };
 
     this.closeApp = function (app_name) {
+      _this.log("关闭", app_name);
+
+      sleep(2000);
       app.openAppSetting(app_name);
       var running = true;
       threads.start(function () {
@@ -967,9 +971,9 @@ var tool = function () {
       });
       threads.start(function () {
         while (running) {
-          var node = textContains("确定");
-          node.waitFor();
-          VO.clickNodeNotNull(node.findOnce());
+          var node1 = text("确定");
+          node1.waitFor();
+          VO.clickNodeNotNull(node1.findOnce());
           sleep(1000);
           break;
         }
@@ -977,6 +981,12 @@ var tool = function () {
       sleep(3000);
       running = false;
       sleep(1000);
+    };
+
+    this.reg = function (str, reg) {
+      return str.match(reg).filter(function (it) {
+        it != '';
+      });
     };
   }
 
@@ -996,6 +1006,22 @@ var tool = function () {
   };
 
   ;
+
+  tool.prototype.error = function (msg) {
+    var log_msg = "";
+
+    if (arguments.length != 1) {
+      for (var i = 0; i < arguments.length; i++) {
+        log_msg += arguments[i];
+      }
+    } else {
+      log_msg = msg;
+    }
+
+    console.error(log_msg);
+    hamibot.postMessage(log_msg);
+  };
+
   return tool;
 }();
 
@@ -1235,7 +1261,13 @@ var activityDoNotDoException = function (_super) {
 }(BaseException);
 
 
+;// CONCATENATED MODULE: ./src/CONSTANT.ts
+var PACKAGE = {
+  QUYUE: "com.vivo.vreader",
+  BROWSER: "com.vivo.browser"
+};
 ;// CONCATENATED MODULE: ./src/modules/browser.ts
+
 
 
 
@@ -1262,20 +1294,29 @@ var 进入活动主页面 = function 进入活动主页面() {
 
   var goalPage = packageName("com.vivo.browser").text("下载应用赚金币");
   var enter_state = ENTER.SUCCESS;
-  var re = app.launch("com.vivo.browser");
 
-  if (!re) {
-    VO.log("打开 浏览器 失败");
-    enter_state = ENTER.FAIL;
-  } else {
-    VO.log("打开应用成功");
-    sleep(2000);
+  if (!VO.atPage(goalPage)) {
+    if (!app.launch("com.vivo.browser")) {
+      VO.log("打开 浏览器 失败");
+      enter_state = ENTER.FAIL;
+    } else {
+      VO.log("打开应用成功");
+      sleep(2000);
 
-    if (!VO.hasOne(goalPage, 2000)) {
-      var goal_node = id("btn_text").text("免费小说");
+      if (!VO.hasOne(goalPage, 2000)) {
+        var goal_node1 = id("btn_text").text("免费小说");
+        var goal_node2 = id("tv").text("小说");
 
-      if (VO.hasOne(goal_node, 2000)) {
-        VO.clickNode(goal_node);
+        if (VO.hasOne(goal_node1, 2000)) {
+          VO.log("采用第一种方式");
+          VO.clickNode(goal_node1);
+        } else if (VO.hasOne(goal_node2, 2000)) {
+          VO.log("采用第二种方式");
+          VO.clickNode(goal_node2);
+        } else {
+          enter_state = ENTER.FAIL;
+          return enter_state;
+        }
 
         if (!VO.atPage(goalPage, 2000)) {
           var node = (_a = id("channel_image_view").findOne(1000)) === null || _a === void 0 ? void 0 : _a.parent();
@@ -1295,9 +1336,9 @@ var 进入活动主页面 = function 进入活动主页面() {
         } else {
           VO.log("已经进入任务主页面，开始脚本");
         }
+      } else {
+        enter_state = ENTER.FAIL;
       }
-    } else {
-      enter_state = ENTER.FAIL;
     }
   }
 
@@ -1315,6 +1356,7 @@ var 逛一逛 = function 逛一逛() {
 var 下载推荐应用领金币 = function 下载推荐应用领金币(obj) {
   var mainPage = text("互动领奖专区");
   var packageName = "com.vivo.browser";
+  var search_time = 8;
   var browserPage = (obj === null || obj === void 0 ? void 0 : obj.goalPage) || id("cl_novel_search_bar_welfare_container");
   var flag1 = 0,
       flag2 = 0;
@@ -1329,32 +1371,49 @@ var 下载推荐应用领金币 = function 下载推荐应用领金币(obj) {
   var get_run_count = function get_run_count() {
     var _a, _b, _c, _d;
 
-    if (obj && Object.keys(obj).length !== 0) {
-      sleep(1000);
+    sleep(1000);
 
-      if (VO.hasOne(textContains("任务溜走了"), 3000)) {
-        flag1 = f1_max = 0;
-        f2_max = flag2 = 0;
-        VO.log("更新运行次数：flag1 = ", flag1, ",f1_max = ", f1_max);
-        VO.log("更新运行次数：flag2 = ", flag2, "f2_max = ", f2_max);
-        VO.warning("号黑了老兄！");
-        return;
-      }
+    if (VO.hasOne(textContains("任务溜走了"), 3000)) {
+      flag1 = f1_max = 0;
+      f2_max = flag2 = 0;
+      VO.warning("号黑了老兄！");
+      return;
+    }
 
-      if (VO.hasOne(text("免费领奖"), 3000)) {
+    var defaultWaitTime = 3000;
+
+    if (currentPackage() === PACKAGE.QUYUE) {
+      if (VO.hasOne(text("免费领奖"), defaultWaitTime)) {
         var count_node1 = (_b = (_a = text("免费领奖").findOne(3000)) === null || _a === void 0 ? void 0 : _a.parent()) === null || _b === void 0 ? void 0 : _b.child(2);
         flag1 = parseInt((count_node1 === null || count_node1 === void 0 ? void 0 : count_node1.text().split("/")[0]) || "0") / f1_single;
         f1_max = parseInt((count_node1 === null || count_node1 === void 0 ? void 0 : count_node1.text().split("/")[1]) || "0") / f1_single;
-        VO.log("更新运行次数：flag1 = ", flag1, ",f1_max = ", f1_max);
       }
 
-      if (VO.hasOne(text(" 点击搜索词并浏览8秒领金币".trim()), 3000)) {
+      if (VO.hasOne(text("点击搜索词并浏览8秒领金币".trim()), defaultWaitTime)) {
         var count_node2 = (_d = (_c = text("点击搜索词并浏览8秒领金币").findOne(5000)) === null || _c === void 0 ? void 0 : _c.parent()) === null || _d === void 0 ? void 0 : _d.child(2);
         flag2 = parseInt((count_node2 === null || count_node2 === void 0 ? void 0 : count_node2.text().split("/")[0]) || "0") / f2_single;
         f2_max = parseInt((count_node2 === null || count_node2 === void 0 ? void 0 : count_node2.text().split("/")[1]) || "0") / f2_single;
-        VO.log("更新运行次数：flag2 = ", flag2, "f2_max = ", f2_max);
       }
     }
+
+    if (currentPackage() === PACKAGE.BROWSER) {
+      var str1 = "免费领奖，已领取.*金币，最高可获得.*金币，打开以下内容即可获取奖励";
+      var str2 = "点击搜索词领金币，已领取0金币，最高可获得3000金币，搜索下方内容并浏览结果页8秒，即可获得奖励";
+
+      if (VO.hasOne(text(str1), defaultWaitTime)) {
+        var arr = text(str1).findOne().text().match(/\d+/);
+        arr && arr.length === 2 && (flag1 = parseInt(arr[0] || "0") / 100) && (f1_max = parseInt(arr[1] || "0") / 100);
+      }
+
+      if (VO.hasOne(text(str2), defaultWaitTime)) {
+        var arr = text(str2).findOne().text().match(/(\d+){3}/);
+        arr && arr.length >= 2 && (flag2 = parseInt(arr[0] || "0") / 100) && (f2_max = parseInt(arr[1] || "0") / 100);
+        arr.length >= 3 && (search_time = parseInt(arr[2] || "8"));
+      }
+    }
+
+    VO.log("更新运行次数：flag1 = ", flag1, ",f1_max = ", f1_max);
+    VO.log("更新运行次数：flag2 = ", flag2, ",f2_max = ", f2_max);
   };
 
   if (data && data.length) {
@@ -1417,8 +1476,8 @@ var 下载推荐应用领金币 = function 下载推荐应用领金币(obj) {
           sleep(5000);
         } else if (key === "搜索领奖") {
           flag2++;
-          VO.log("等待10秒");
-          sleep(10 * 1000);
+          VO.log("等待".concat(search_time + "", "秒"));
+          sleep((search_time + 2) * 1000);
           VO.backToPage(mainPage, 2000);
         } else {
           VO.backToPage(mainPage);
@@ -1523,7 +1582,6 @@ var _run = function _run() {
 
 var pre = function pre() {
   VO.log("browser开始运行");
-  VO.closeApp("com.vivo.browser");
 
   if (进入活动主页面() !== ENTER.SUCCESS) {
     throw new activityDoNotDoException("无法执行该浏览器任务");
@@ -1745,7 +1803,7 @@ if (mode === MODE.TEST) {
   try {
     browser.run();
   } catch (error) {
-    VO.log(error);
+    VO.error(error);
   } finally {
     home();
     sleep(3000);

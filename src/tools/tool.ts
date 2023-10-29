@@ -8,10 +8,11 @@ let v = function () {
 };
 
 class tool {
-  log = (msg: any,...params:any[])=> {
+  log = (msg: any, ...params: any[]) => {
     let log_msg = ""
-    if (params && params.length != 1) {
+    if (params && params.length != 0) {
       //获取全部的参数
+      log_msg += msg
       for (let i = 0; i < params.length; i++) {
         log_msg += params[i]
       }
@@ -36,6 +37,20 @@ class tool {
     console.warn(log_msg);
     hamibot.postMessage(log_msg);
   };
+
+  error(msg: string): void {
+    let log_msg = ""
+    if (arguments.length != 1) {
+      //获取全部的参数
+      for (let i = 0; i < arguments.length; i++) {
+        log_msg += arguments[i]
+      }
+    } else {
+      log_msg = msg
+    }
+    console.error(log_msg);
+    hamibot.postMessage(log_msg);
+  }
 
   get_time = (): number => {
     return new Date().getTime();
@@ -114,36 +129,41 @@ class tool {
     this.show_console(true);
   };
 
-  clickOnBound = (obj: UiObject | Rect) => {
-    // const bounds = obj.bounds();
-    // VO.log(bounds);
-    // click((bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2);
-    if (obj instanceof UiObject) {
-      const bounds = obj.bounds();
-      this.log(bounds);
-      click((bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2);
-    } else if (obj instanceof Rect) {
-      click((obj.left + obj.right) / 2, (obj.top + obj.bottom) / 2);
-    } else {
-      VO.log("你传的是啥玩意儿对象，假的")
-    }
+  clickOnBound = function (obj: UiObject) {
+    const bounds = obj.bounds();
+    VO.log(bounds.left, ",", bounds.right, ",", bounds.top, ",", bounds.bottom);
+    const x = Math.floor((bounds.left + bounds.right) / 2) + 2;
+    const y = Math.floor((bounds.top + bounds.bottom) / 2) + 2;
+    // const re = click(x, y);
+    // VO.log("点击坐标:[",x,",",y,"]")
+    click(bounds.left, bounds.top, bounds.bottom, bounds.right)
+    // if (obj instanceof UiObject) {
+    //   const bounds = obj.bounds();
+    //   this.log(bounds);
+    //   click((bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2);
+    // } else if (obj instanceof Rect) {
+    //   click((obj.left + obj.right) / 2, (obj.top + obj.bottom) / 2);
+    // } else {
+    //   VO.log("你传的是啥玩意儿对象，假的")
+    // }
   };
 
   clickNodeNotNull = (node: UiObject, msg?: String) => {
     if (!node) {
-      VO.log("不存在此节点");
+      this.log("不存在此节点");
       return;
     }
     try {
       if (!node.click()) {
         //如果点击失败（多半是因为节点不可点击），点击该节点的坐标
-        VO.log("click失败，更改方式");
-        VO.clickOnBound(node)
+        this.log("click失败，更改方式");
+        sleep(1000)
+        this.clickOnBound(node)
       }
-      VO.log("click成功");
+      this.log("click成功");
       msg && VO.log(msg);
     } catch (e) {
-      VO.log(e);
+      this.log(e);
     }
   };
 
@@ -156,7 +176,7 @@ class tool {
   };
 
   clickNode = (node: UiSelector) => {
-    const nodeInfo = node.findOne(1000);
+    const nodeInfo = node.findOne(10);
     this.clickNodeNotNull(nodeInfo);
   };
 
@@ -174,7 +194,14 @@ class tool {
     return node && node.exists()
   }
 
+
+  /**
+   * 关闭app
+   * @param app_name app的名字
+   */
   closeApp = (app_name: string) => {
+    this.log("关闭", app_name)
+    sleep(2000)
     app.openAppSetting(app_name);
     let running = true;
     threads.start(function () {
@@ -186,12 +213,11 @@ class tool {
         break;
       }
     });
-
     threads.start(() => {
       while (running) {
-        const node = textContains("确定");
-        node.waitFor();
-        VO.clickNodeNotNull(node.findOnce());
+        const node1 = text("确定");
+        node1.waitFor();
+        VO.clickNodeNotNull(node1.findOnce());
         sleep(1000);
         break;
       }
@@ -199,6 +225,18 @@ class tool {
     sleep(3000);
     running = false;
     sleep(1000)
+  }
+
+  /**
+   * 
+   * @param str 源字符串
+   * @param reg 需要匹配的正则表达式
+   * @returns Array,匹配到的数组
+   */
+  reg = (str: string, reg: RegExp) => {
+    return str.match(reg).filter((it) => {
+      it != ''
+    })
   }
 
 }

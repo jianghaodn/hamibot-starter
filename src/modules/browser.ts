@@ -3,9 +3,9 @@
  * @author dahaozi
  * @date 2023年10月27日16点01分
  */
-import { time } from "console";
-import { VO, ENTER} from "../tools/tool";
+import { VO, ENTER } from "../tools/tool";
 import { activityDoNotDoException } from "../exception/exceptions";
+import { PACKAGE } from "../CONSTANT";
 
 
 class activity {
@@ -33,30 +33,40 @@ activity_list.push(
 
 const 进入活动主页面 = () => {
     const goalPage = packageName("com.vivo.browser").text("下载应用赚金币")
-    
-    let enter_state: ENTER = ENTER.SUCCESS
-    const re = app.launch("com.vivo.browser")
-    if (!re) {
-        VO.log("打开 浏览器 失败")
-        enter_state = ENTER.FAIL
-    } else {
-        VO.log("打开应用成功")
-        sleep(2000)
-        if (!VO.hasOne(goalPage,2000)) {
-            //尝试进入活动页面
-            const goal_node = id("btn_text").text("免费小说")
-            //尝试点击页面底部的免费小说
-            if (VO.hasOne(goal_node, 2000)) {
-                VO.clickNode(goal_node)
-                if (!VO.atPage(goalPage,2000)) {
+
+    let enter_state = ENTER.SUCCESS
+
+    if (!VO.atPage(goalPage)) {
+        if (!app.launch("com.vivo.browser")) {
+            VO.log("打开 浏览器 失败")
+            enter_state = ENTER.FAIL
+        } else {
+            VO.log("打开应用成功")
+            sleep(2000)
+            if (!VO.hasOne(goalPage, 2000)) {
+                //尝试进入活动页面
+                const goal_node1 = id("btn_text").text("免费小说")//第一种按钮
+                const goal_node2 = id("tv").text("小说")//第二种按钮
+                //点击页面不同分地方的“免费小说”进入活动页面
+                if (VO.hasOne(goal_node1, 2000)) {
+                    VO.log("采用第一种方式")
+                    VO.clickNode(goal_node1)
+                } else if (VO.hasOne(goal_node2, 2000)) {
+                    VO.log("采用第二种方式")
+                    VO.clickNode(goal_node2)//TODO无法运行。无法使用click(x,y)点击节点坐标.不管是点击坐标还是点击矩形区域都无法成功
+                } else {
+                    enter_state = ENTER.FAIL
+                    return enter_state//提前返回
+                }
+                if (!VO.atPage(goalPage, 2000)) {
                     const node = id("channel_image_view").findOne(1000)?.parent()
                     //继续点击福利按钮
-                    if(node){
+                    if (node) {
                         VO.clickNodeNotNull(node)
-                        if(!VO.atPage(goalPage,2000)){
+                        if (!VO.atPage(goalPage, 2000)) {
                             enter_state = ENTER.FAIL
                         }
-                    }else{
+                    } else {
                         enter_state = ENTER.FAIL
                     }
                     VO.log("进入失败，无法进入")
@@ -65,9 +75,9 @@ const 进入活动主页面 = () => {
                     VO.log("已经进入任务主页面，开始脚本")
                 }
                 //进入成功，继续脚本
+            } else {
+                enter_state = ENTER.FAIL
             }
-        } else {
-            enter_state = ENTER.FAIL
         }
     }
 
@@ -91,6 +101,7 @@ const 逛一逛 = () => {
 const 下载推荐应用领金币 = (obj?: any) => {
     const mainPage = text("互动领奖专区");
     const packageName = "com.vivo.browser";
+    let search_time = 8//搜索领奖的默认浏览时间
     const browserPage = obj?.goalPage || id("cl_novel_search_bar_welfare_container");
     let flag1 = 0, //打开领奖
         flag2 = 0; //搜索领奖
@@ -109,34 +120,46 @@ const 下载推荐应用领金币 = (obj?: any) => {
 
     //尝试获取运行次数，只在趣悦app 有效
     const get_run_count = () => {
-        if (obj && Object.keys(obj).length !== 0) {
-            //是趣悦
-            sleep(1000)//等待页面加载完成
-            if(VO.hasOne(textContains("任务溜走了"),3000)){
-                //没有任务，可能是黑号了
-                flag1 = f1_max = 0
-                f2_max = flag2 = 0
-                VO.log("更新运行次数：flag1 = ",flag1,",f1_max = ",f1_max)
-                VO.log("更新运行次数：flag2 = ",flag2,"f2_max = ",f2_max)
-                VO.warning("号黑了老兄！")
-                return;
-            }
-            
-            if (VO.hasOne(text("免费领奖"),3000)) {
+        // if (obj && Object.keys(obj).length !== 0) {
+        sleep(1000)//等待页面加载完成
+        if (VO.hasOne(textContains("任务溜走了"), 3000)) {
+            //没有任务，可能是黑号了
+            flag1 = f1_max = 0
+            f2_max = flag2 = 0
+            VO.warning("号黑了老兄！")
+            return;
+        }
+        const defaultWaitTime = 3000
+        //是趣悦
+        if (currentPackage() === PACKAGE.QUYUE) {
+            if (VO.hasOne(text("免费领奖"), defaultWaitTime)) {
                 const count_node1 = text("免费领奖").findOne(3000)?.parent()?.child(2)
                 flag1 = parseInt(count_node1?.text().split("/")[0] || "0") / f1_single
                 f1_max = parseInt(count_node1?.text().split("/")[1] || "0") / f1_single
-                VO.log("更新运行次数：flag1 = ",flag1,",f1_max = ",f1_max)
                 // throw new BaseException("测试结束")
-            } 
-            if (VO.hasOne(text(" 点击搜索词并浏览8秒领金币".trim()),3000)) {
+            }
+            if (VO.hasOne(text("点击搜索词并浏览8秒领金币".trim()), defaultWaitTime)) {
                 const count_node2 = text("点击搜索词并浏览8秒领金币").findOne(5000)?.parent()?.child(2)
                 flag2 = parseInt(count_node2?.text().split("/")[0] || "0") / f2_single
                 f2_max = parseInt(count_node2?.text().split("/")[1] || "0") / f2_single
-                VO.log("更新运行次数：flag2 = ",flag2,"f2_max = ",f2_max)
                 // throw new BaseException("测试结束")
             }
         }
+        if (currentPackage() === PACKAGE.BROWSER) {
+            const str1 = "免费领奖，已领取.*金币，最高可获得.*金币，打开以下内容即可获取奖励"
+            const str2 = "点击搜索词领金币，已领取0金币，最高可获得3000金币，搜索下方内容并浏览结果页8秒，即可获得奖励"
+            if (VO.hasOne(text(str1), defaultWaitTime)) {
+                const arr = text(str1).findOne().text().match(/\d+/)
+                arr && arr.length === 2 && (flag1 = parseInt(arr[0] || "0") / 100) && (f1_max = parseInt(arr[1] || "0") / 100)
+            }
+            if (VO.hasOne(text(str2), defaultWaitTime)) {
+                const arr = text(str2).findOne().text().match(/(\d+){3}/)//匹配一个数字，匹配三次。包含 0：已经领取；1：最高可获得；2：浏览时间
+                arr && arr.length >= 2 && (flag2 = parseInt(arr[0] || "0") / 100) && (f2_max = parseInt(arr[1] || "0") / 100)
+                arr.length >= 3 && (search_time = parseInt(arr[2] || "8"))
+            }
+        }
+        VO.log("更新运行次数：flag1 = ", flag1, ",f1_max = ", f1_max)
+        VO.log("更新运行次数：flag2 = ", flag2, ",f2_max = ", f2_max)
     }
 
     //设置f1和f2的数量
@@ -190,8 +213,8 @@ const 下载推荐应用领金币 = (obj?: any) => {
                     sleep(5000);
                 } else if (key === "搜索领奖") {
                     flag2++;
-                    VO.log("等待10秒")
-                    sleep(10 * 1000);
+                    VO.log("等待".concat(search_time + "", "秒"))
+                    sleep((search_time + 2) * 1000);
                     VO.backToPage(mainPage, 2000);
                 } else {
                     VO.backToPage(mainPage);
@@ -257,7 +280,7 @@ const 点击搜索词领金币 = () => {
     const random_search = function () {
         const node = textContains(text_contains)
 
-        if (VO.hasOne(node,3000)) {
+        if (VO.hasOne(node, 3000)) {
             //有随机搜索得金币的按钮
             //获取浏览次数
             let count = getSearchCount()
@@ -265,7 +288,7 @@ const 点击搜索词领金币 = () => {
             while (count--) {
                 node.waitFor()
                 VO.clickNodeNotNull(node.findOne(1000))
-                VO.log(`等待${sleep_time/MS}秒`)
+                VO.log(`等待${sleep_time / MS}秒`)
                 sleep(sleep_time)
                 //模拟随机滑动
                 random_swipe()
@@ -303,7 +326,8 @@ const _run = function () {
 const pre = () => {
     VO.log("browser开始运行");
     //关闭浏览器
-    VO.closeApp("com.vivo.browser")
+    //暂时不关闭浏览器，因为无法自动化的进入活动页面，需要手动进入
+    // VO.closeApp("com.vivo.browser")
     if (进入活动主页面() !== ENTER.SUCCESS) {
         throw new activityDoNotDoException("无法执行该浏览器任务")
     }
@@ -325,7 +349,7 @@ export const browser = {
     browser_下载推荐应用领金币: (obj: any) => {
         下载推荐应用领金币(obj)
     },
-    browser_点击搜索词领金币(){
+    browser_点击搜索词领金币() {
         点击搜索词领金币()
     }
 };

@@ -24,8 +24,8 @@ if (mode === MODE.TEST) {
 } else {
     try {
         browser.run()
-    } catch (error) {
-        VO.log(error)
+    } catch (error:any) {
+        VO.error(error)
     } finally {
         home()
         sleep(3000)
