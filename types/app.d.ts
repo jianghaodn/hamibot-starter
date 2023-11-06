@@ -205,8 +205,7 @@ declare module 'app' {
          * ```typescript
          * // 查看文本文件
          * app.viewFile('/sdcard/1.txt');
-         * ```
-         */
+         * ```         */
         viewFile(path: string): void;
 
         /**

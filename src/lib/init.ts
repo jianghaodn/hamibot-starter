@@ -35,9 +35,10 @@ export function init() {
     if (SHOW_CONSOLE) {
         console.show();
         sleep(SHORT_WAIT_MS);
-        console.setPosition(0, 100);
-        console.setSize(device.width, device.height / 4);
+        console.setPosition(0, 200);
+        console.setSize(device.width/2, device.height / 4);
     }
 
-    setScreenMetrics(1080, 2400);
+    setScreenMetrics(1260, 2800);
 }
+

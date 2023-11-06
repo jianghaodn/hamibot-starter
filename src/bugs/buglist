@@ -1,0 +1,2 @@
+1、init函数中默认的setScreenMetrics不应该是固定值1080x2400,而应该是开发者的屏幕像素值，否则会导致click(x,y)函数失效
+2、UiObject的packageName等属性有误，运行在Hamibot上面显示的是Function而不是property

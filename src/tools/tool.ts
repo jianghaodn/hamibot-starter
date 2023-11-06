@@ -8,7 +8,8 @@ let v = function () {
 };
 
 class tool {
-  log = (msg: any, ...params: any[]) => {
+
+  base_log = function (msg: string, ...params: any[]) {
     let log_msg = ""
     if (params && params.length != 0) {
       //获取全部的参数
@@ -19,41 +20,26 @@ class tool {
     } else {
       log_msg = msg + ""
     }
-    console.log(log_msg);
-    toast(log_msg);
-    hamibot.postMessage(log_msg);
+    return log_msg
+  }
+  log = (message: any, ...params) => {
+    console.log(message, !params.length ? "" : params);
   };
 
-  warning(msg: string): void {
-    let log_msg = ""
-    if (arguments.length != 1) {
-      //获取全部的参数
-      for (let i = 0; i < arguments.length; i++) {
-        log_msg += arguments[i]
-      }
-    } else {
-      log_msg = msg
-    }
-    console.warn(log_msg);
-    hamibot.postMessage(log_msg);
+  warning(msg: string, ...params): void {
+    console.warn(msg, !params.length ? "" : params);
   };
 
-  error(msg: string): void {
-    let log_msg = ""
-    if (arguments.length != 1) {
-      //获取全部的参数
-      for (let i = 0; i < arguments.length; i++) {
-        log_msg += arguments[i]
-      }
-    } else {
-      log_msg = msg
-    }
-    console.error(log_msg);
-    hamibot.postMessage(log_msg);
+  error(message: any, ...params): void {
+    console.error(message, !params.length ? "" : params);
   }
 
   get_time = (): number => {
     return new Date().getTime();
+  };
+  sleep = (timeOut: number) => {
+    console.log("等待%s s", timeOut)
+    sleep(timeOut * 1000)
   };
 
   findImage = function (big, small, radius, similarity) {
@@ -90,13 +76,10 @@ class tool {
       console.show();
       sleep(300);
       // 修改控制台位置
-      console.setPosition(0, 100);
+      console.setPosition(0, 200);
       // 修改控制台大小
       console.setSize(device.width / 2, device.height / 4);
     }
-
-    // 在控制台输出 Hello Hamibot
-    toastLog("Hello Hamibot");
   };
 
   stop = function () {
@@ -131,12 +114,15 @@ class tool {
 
   clickOnBound = function (obj: UiObject) {
     const bounds = obj.bounds();
-    VO.log(bounds.left, ",", bounds.right, ",", bounds.top, ",", bounds.bottom);
-    const x = Math.floor((bounds.left + bounds.right) / 2) + 2;
-    const y = Math.floor((bounds.top + bounds.bottom) / 2) + 2;
-    // const re = click(x, y);
-    // VO.log("点击坐标:[",x,",",y,"]")
-    click(bounds.left, bounds.top, bounds.bottom, bounds.right)
+    console.log(bounds.left, bounds.right, bounds.top, bounds.bottom);
+    const x = bounds.centerX();
+    const y = bounds.centerY();
+    console.log("点击坐标:[", x, ",", y, "]")
+    click(x, y)
+    sleep(1000)
+
+    // click(bounds.left, bounds.top, bounds.bottom, bounds.right)
+    return true
     // if (obj instanceof UiObject) {
     //   const bounds = obj.bounds();
     //   this.log(bounds);
@@ -149,23 +135,58 @@ class tool {
   };
 
   clickNodeNotNull = (node: UiObject, msg?: String) => {
+    let click_re = false
     if (!node) {
-      this.log("不存在此节点");
-      return;
-    }
-    try {
-      if (!node.click()) {
-        //如果点击失败（多半是因为节点不可点击），点击该节点的坐标
-        this.log("click失败，更改方式");
-        sleep(1000)
-        this.clickOnBound(node)
+      this.log("不存在此节点", node);
+    } else {
+      console.log(node)
+      log(node.packageName)
+      try {
+        if (node.packageName === "com.vivo.browser") {
+          //直接点击坐标
+          console.log("浏览器，直接点击坐标")
+          this.clickOnBound(node)
+        } else {
+          if (!node.click()) {
+            //如果点击失败（多半是因为节点不可点击），点击该节点的坐标
+            this.log("click失败，更改方式");
+            sleep(1000)
+            click_re = this.clickOnBound(node)
+          } else {
+            this.log("click", node);
+            click_re = true
+          }
+        }
+        msg && VO.log(msg);
+      } catch (e) {
+        this.log(e);
       }
-      this.log("click成功");
-      msg && VO.log(msg);
-    } catch (e) {
-      this.log(e);
     }
+
+    return click_re
   };
+
+  /**
+   * 以try-catch运行一个函数
+   * @param func 运行的函数
+   * @param final finally语句块的内容，可选
+   * @returns 函数的运行结果
+   */
+  runWithCatch = (func: Function, final?: Function): any => {
+    this.log("运行任务：", func.name)
+    let re;
+    try {
+      re = func()
+    } catch (error) {
+      this.error(error)
+    } finally {
+      if (final) {
+        final()
+      }
+    }
+    VO.log(func.name, "执行完毕")
+    return re;
+  }
 
   /**
  * 检测是否在指定页面
@@ -176,6 +197,7 @@ class tool {
   };
 
   clickNode = (node: UiSelector) => {
+    console.log("点击节点:", node)
     const nodeInfo = node.findOne(10);
     this.clickNodeNotNull(nodeInfo);
   };
@@ -189,20 +211,33 @@ class tool {
     sleep(1000)
   };
 
+  //存在任意一个节点都算返回
+  backToPageOne = (node_list: Array<UiSelector>, timeOut?: number) => {
+    flag: while (true) {
+      for (const iterator of node_list) {
+        if (iterator && this.hasNode(iterator)) {
+          break flag
+        }
+      }
+      back()
+      sleep(timeOut || 1000);
+    }
+    VO.log("已经返回到了指定的界面");
+    sleep(1000)
+  }
+
 
   hasNode = (node: UiSelector) => {
-    return node && node.exists()
+    return node && node.findOne(10)
   }
 
 
   /**
    * 关闭app
-   * @param app_name app的名字
+   * @param package_name app的名字
    */
-  closeApp = (app_name: string) => {
-    this.log("关闭", app_name)
-    sleep(2000)
-    app.openAppSetting(app_name);
+  closeApp = (package_name: string) => {
+    this.openAppDetail(package_name)
     let running = true;
     threads.start(function () {
       while (running) {
@@ -223,10 +258,38 @@ class tool {
       }
     })
     sleep(3000);
+    //关闭了app以后记得返回，防止误卸载此软件
+    back()
+    sleep(500)
+    back()
     running = false;
     sleep(1000)
   }
 
+
+
+  /**
+   * 
+   * @param name 包名或者app的名称
+   * @returns 打开是否成功
+   */
+  openAppDetail = (name: string) => {
+    const match_re = new RegExp(/.+\..+\..+/).test(name)
+    if (!match_re) {
+      //这不是一个包名
+      //获取包名
+      name = app.getPackageName(name)
+      if (!name) {
+        //包名不存在，应用不存在
+        VO.error("打开应用详情失败，应用%s不存在", name)
+        return false;
+      }
+    }
+    sleep(1000)
+    const re = app.openAppSetting(name);
+    sleep(1000)
+    return re;
+  }
   /**
    * 
    * @param str 源字符串
@@ -237,6 +300,48 @@ class tool {
     return str.match(reg).filter((it) => {
       it != ''
     })
+  };
+
+  /**
+   * 开启一个线程，一般用于处理异常
+   * @param func 函数
+   * @param isLoop 是否需要死循环
+   * @returns 函数执行结果
+   */
+  runThread = (func: Function, isLoop?: boolean) => {
+    let re;
+    threads.start(() => {
+      do {
+        re = func();
+        sleep(1000)
+      } while (isLoop);
+    })
+
+    return re;
+  };
+
+  /**
+   * 
+   * @param node 等待的节点选择器
+   * @param timeOut 超时时间，单位是秒
+   * @returns 
+   */
+  waitNode = (node: UiSelector, timeOut?: number) => {
+    if (!timeOut) {
+      node.waitFor()
+      return true
+    }
+
+    while (timeOut--) {
+      this.log("等待节点", node)
+      if (this.hasNode(node)) {
+        VO.log("找到了节点:", node)
+        return true
+      }
+      sleep(1000)
+    }
+
+    return false;
   }
 
 }
@@ -408,23 +513,23 @@ v.prototype.clickOnBound = (obj: any) => {
 
 }
 
-v.prototype.clickNodeNotNull = (node: UiObject, msg: String) => {
-  if (!node) {
-    VO.log("不存在此节点");
-    return;
-  }
-  try {
-    if (!node.click()) {
-      //如果点击失败（多半是因为节点不可点击），点击该节点的坐标
-      VO.log("click失败，更改方式");
-      VO.clickOnBound(node)
-    }
-    VO.log("click成功");
-    msg && VO.log(msg);
-  } catch (e) {
-    VO.log(e);
-  }
-};
+// v.prototype.clickNodeNotNull = (node: UiObject, msg: String) => {
+//   // if (!node) {
+//   //   VO.log("不存在此节点");
+//   //   return;
+//   // }
+//   // try {
+//   //   if (!node.click()) {
+//   //     //如果点击失败（多半是因为节点不可点击），点击该节点的坐标
+//   //     VO.log("click失败，更改方式");
+//   //     VO.clickOnBound(node)
+//   //   }
+//   //   VO.log("click成功");
+//   //   msg && VO.log(msg);
+//   // } catch (e) {
+//   //   VO.log(e);
+//   // }
+// };
 
 /**
  * 检测是否在指定页面
@@ -457,8 +562,8 @@ v.prototype.hasNode = (node: UiSelector) => {
   return node && node.exists()
 }
 
-v.prototype.closeApp = (app_name: string) => {
-  app.openAppSetting(app_name);
+v.prototype.closeApp = (package_name: string) => {
+  app.openAppSetting(package_name);
   let running = true;
   threads.start(function () {
     while (running) {
