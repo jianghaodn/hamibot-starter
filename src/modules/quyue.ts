@@ -33,7 +33,7 @@ const _进入活动主页面 = () => {
     let enter_state: ENTER
     const re = app.launch("com.vivo.vreader")
     if (!re) {
-        VO.log("打开 应用 失败")
+        console.error("打开 应用 失败")
         enter_state = ENTER.FAIL
     } else {
         VO.log("打开应用成功")
@@ -44,7 +44,7 @@ const _进入活动主页面 = () => {
             if (VO.hasOne(goal_node, 10000)) {
                 VO.clickNode(goal_node)
                 if (!VO.hasOne(text("大额专区"),10000)) {
-                    VO.log("进入失败，无法进入")
+                    console.error("进入失败，无法进入")
                     enter_state = ENTER.FAIL
                 } else {
                     VO.log("已经进入任务主页面，开始脚本")
@@ -127,20 +127,25 @@ const _看视频领海量金币 = () => {
             if (VO.hasOne(enter_node, 3000)) {
                 VO.clickNode(enter_node)
                 VO.log("等待goalpage出现")
-                goal_page.waitFor()
-                VO.log("goalpage已经出现")
+                // goal_page.waitFor()
+                if(!VO.waitNode(goal_page,5)){
+                    console.error("goalpage未出现")
+                    state = false
+                }else{
+                    VO.log("goalpage已经出现")
+                }
             }
             else {
-                VO.log("不在任务页且不能进入任务页，无法完成")
+                console.error("不在任务页且不能进入任务页，无法完成")
                 state = false
             }
         }
         VO.log("已经进入任务页，开始任务")
         return state
     }
-    //检查是否在首页
+    //检查是否在任务页
     if (!VO.hasOne(text("大额专区"), 1000)) {
-        VO.log(Function.name, "不在首页，请先进入首页再执行！")
+        console.error(Function.name, "不在任务页，请先进入任务页再执行！")
         return;
     }
 
@@ -245,10 +250,11 @@ export const quyue = {
         if (currentPackage() === "com.vivo.vreader")
             _run()
         else {
-            VO.log("不在趣悦界面")
+            console.error("不在趣悦界面")
         }
         VO.log("趣悦脚本运行完毕")
         home()
+        sleep(3000)
     }
 }
 

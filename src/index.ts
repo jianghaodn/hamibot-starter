@@ -11,30 +11,44 @@ import { init } from "./lib/init";
 import { browser, _browser } from "./modules/browser";
 import { VO } from "./tools/tool"
 import { quyue, _quyue } from "./modules/quyue";
-import { mode, MODE } from "./MODE";
 import { wallet } from "./modules/wallet";
 
 init();
-
-console.log('测试tool工具箱');
 
 const configure = {
     show_console: true
 }
 
-if (mode === MODE.TEST) {
-    //测试环境
-    _browser.run()
-    _quyue.run()
-} else {
-    VO.runWithCatch(browser.run)
-    VO.runWithCatch(quyue.run)
-    // VO.runWithCatch(wallet.run)
+
+VO.runWithCatch(wallet.run)
+exit()
+try{
+    VO.runWithCatch(browser.run);
+}catch(error){
+    console.error(error)
+    //捕获到异常，重新运行一次
+    console.log("由于出现问题，重新运行一次")
+    VO.runWithCatch(browser.run);
+}finally{
+    //
 }
+try{
+    VO.runWithCatch(quyue.run);
+}catch(error){
+    console.error(error)
+    //捕获到异常，重新运行一次
+    console.log("由于出现问题，重新运行一次")
+    VO.runWithCatch(quyue.run);
+}finally{
+    //
+}
+
+
 
 VO.log("任务已经全部运行完毕了")
 VO.log("脚本窗口将在10秒后关闭")
 sleep(10 * 1000)
+exit()
 // rclone mount dahaozi:/  /aliyun --cache-dir /tmp --allow-other --vfs-cache-mode writes --allow-non-empty --no-update-modtime --header "Referer:" &
 // mkdir -p /tmp/introot
 // mkdir -p /tmp/extroot

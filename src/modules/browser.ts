@@ -52,7 +52,7 @@ const _进入活动主页面 = () => {
         //关闭浏览器
         VO.closeApp("com.vivo.browser");
         if (!app.launch("com.vivo.browser")) {
-            VO.log("打开 浏览器 失败");
+            console.error("打开 浏览器 失败");
             enter_state = ENTER.FAIL;
         } else {
             VO.log("打开应用成功");
@@ -83,13 +83,13 @@ const _进入活动主页面 = () => {
                     if (node) {
                         VO.clickNodeNotNull(node);
                         if (!VO.atPage(goalPage, 2000)) {
-                            VO.log("进入失败，无法进入");
+                            console.error("进入失败，无法进入");
                             enter_state = ENTER.FAIL;
                         } else {
                             VO.log("已经进入任务主页面，开始脚本");
                         }
                     } else {
-                        VO.log("进入失败，无法进入");
+                        console.error("进入失败，无法进入");
                         enter_state = ENTER.FAIL;
                     }
                 } else {
@@ -111,9 +111,12 @@ const 进入活动主页面 = () => {
 
 const 逛一逛领金币 = () => {
     if (!VO.atPage(textMatches("^浏览.*秒可领.*金币$"))) {
-        VO.log("不在任务页面");
+        VO.warning("不在任务页面");
     }
     //开始任务
+
+    //进入了任务页面，先睡眠
+    sleep(2000)
 
     const 逛一逛_btn = text("逛一逛-按钮-点按两次即可激活");
     const 奖励文字 = textMatches("逛一逛领金币 滑动浏览最高可获.*金币");
@@ -134,7 +137,8 @@ const 逛一逛领金币 = () => {
     get_count();
 
     //进入任务页,等3秒，如果没等待，直接退出这个脚本
-    if (!VO.waitNode(逛一逛_btn, 3000)) {
+    if (!VO.waitNode(逛一逛_btn, 3)) {
+        throw new Error("找不到逛一逛_btn")
         return; //找不到这个按钮直接返回
     }
     VO.clickNode(逛一逛_btn);
@@ -142,7 +146,7 @@ const 逛一逛领金币 = () => {
     const coin_btn = id("act_page_float_browse_text");
     const wait_time_sec = (3 * 60 + 5)
     //检查是否在任务页面
-    if (!VO.waitNode(coin_btn, 3000)) {
+    if (!VO.waitNode(coin_btn, 3)) {
         return;
     }
 
@@ -157,7 +161,7 @@ const 逛一逛领金币 = () => {
         sleep(1000);
     };
 
-    while (count--) {
+    while (count-- && VO.hasNode(coin_btn)) {
         //获取当前剩余的时间
         const remainint_time = parseInt(coin_btn.findOne(1000).text());
         if (remainint_time >= 0) {
@@ -171,6 +175,7 @@ const 逛一逛领金币 = () => {
         //完成一次任务，等待3分钟
         VO.log("等待", wait_time_sec, "秒")
         sleep(wait_time_sec * 1000)
+        console.log("等待完毕，继续运行")
     }
     VO.log(Function.name, "运行完毕")
 };
@@ -214,7 +219,7 @@ const 下载推荐应用领金币 = (obj?: any) => {
             //没有任务，可能是黑号了
             flag1 = f1_max = 0;
             f2_max = flag2 = 0;
-            VO.warning("号黑了老兄！");
+            VO.warning("没有任何任务");
             return;
         }
         const defaultWaitTime = 3000;
@@ -276,14 +281,22 @@ const 下载推荐应用领金币 = (obj?: any) => {
             VO.log("当前不在页面");
             if (VO.hasOne(text("我要金币-按钮-点按两次即可激活"))) {
                 VO.clickNode(text("我要金币-按钮-点按两次即可激活"));
-                mainPage.waitFor();
+                // mainPage.waitFor();
+                try {
+                    VO.waitNode(mainPage,5,true,"我要金币按钮不存在")
+                } catch (error) {
+                    VO.error(error)
+                    break flag;
+                }
             } else {
-                VO.log("没有在任务界面，且无法进入任务，退出");
-                return;
+                VO.warning("没有在任务界面，且无法进入任务，退出");
+                throw new Error("没有在任务界面，且无法进入任务，退出");
             }
             sleep(1000);
             // VO.hasOne(textContains("逛一逛")) &&  VO.clickNode(textContains("逛一逛")) || (VO.log("没有在任务界面，且无法进入任务，退出"))
         }
+        //进入了任务页面，先睡眠
+        sleep(2000)
         get_run_count();
         //TODO 有些任务被折叠起来，是否需要展开折叠？如果不展开，是否存在被检测的风险？
 
@@ -299,36 +312,45 @@ const 下载推荐应用领金币 = (obj?: any) => {
             }
         }, false)
 
-
         for (const key of keys) {
             if (flag1 >= f1_max && flag2 >= f2_max) {
                 break flag;
             }
             if (
-                (key === "打开领奖" && flag1 >= f1_max) ||
-                (key === "搜索领奖" && flag2 >= f2_max)
+                (key === "打开领奖" && flag1 >= f1_max) || (key === "搜索领奖" && flag2 >= f2_max)
             ) {
                 continue;
             }
             sleep(1000);
             const keyNodes = textContains(key).find();
-
-
             //如果当前页面不是浏览器，启动浏览器
             const backBrowser = () => {
-                if (currentPackage() !== browser_packageName) {
-                    app.launch(browser_packageName)
+                let obj_package
+                if(obj){
+                    obj_package = "com.vivo.vreader"
+                }else{
+                    obj_package = browser_packageName
+                }
+                //等待超时时间
+                let timeOut = 5
+                while (currentPackage() !== obj_package && timeOut--) {
+                    app.launch(obj_package)
                     sleep(1000)
-                    console.log("等待返回浏览器")
-                    waitForPackage(browser_packageName, 5000)
+                    console.log("等待返回%s",obj_package)
+                    VO.waitNode(packageName(obj_package), 5)
+                }
+                if (!timeOut && !VO.hasNode(packageName(obj_package))) {
+                    //超时后还未返回，触发异常
+                    throw new Error("返回"+obj_package+"失败")
                 }
             }
+            
             for (let i = 0; i < keyNodes.length; i++) {
                 const node = keyNodes[i];
                 sleep(1000);
                 VO.clickNodeNotNull(node);
                 VO.log("执行任务" + key);
-                if (key === "打开领奖") {
+                if (key === "打开领奖" && flag1 < f1_max) {
                     flag1++;
                     sleep(1500);
                     backBrowser()
@@ -338,7 +360,7 @@ const 下载推荐应用领金币 = (obj?: any) => {
                     ])
                     VO.log("等待5秒");
                     sleep(5000);
-                } else if (key === "搜索领奖") {
+                } else if (key === "搜索领奖" && flag2 < f2_max) {
                     flag2++;
                     VO.log("等待".concat(search_time + "", "秒"));
                     sleep((search_time + 2) * 1000);
@@ -375,7 +397,7 @@ const 点击搜索词领金币 = () => {
     const getSearchCount = function () {
         if (currentPackage() === "com.vivo.browser") {
             const count_node = textContains("搜索1次得");
-            if (VO.hasNode(count_node)) {
+            if (VO.hasOne(count_node,1000)) {
                 try {
                     let nodeinfo = textContains("搜索1次得").findOne(1000);
                     //从节点信息获取运行次数信息
@@ -404,15 +426,16 @@ const 点击搜索词领金币 = () => {
 
     const random_search = function () {
         const node = textContains(text_contains);
-
         if (VO.hasOne(node, 3000)) {
+            //进入了任务页面，先睡眠
+            sleep(2000)
             //有随机搜索得金币的按钮
             //获取浏览次数
             let count = getSearchCount();
             const sleep_time = 12 * MS;
             while (count--) {
                 node.waitFor();
-                VO.clickNodeNotNull(node.findOne(1000));
+                VO.clickNode(node);
                 VO.log(`等待${sleep_time / MS}秒`);
                 sleep(sleep_time);
                 //模拟随机滑动
@@ -426,6 +449,7 @@ const 点击搜索词领金币 = () => {
             VO.log("根本没有随机搜索的按钮");
         }
     };
+
     init();
     random_search();
     finish();
@@ -468,10 +492,11 @@ export const browser = {
         if (currentPackage() === "com.vivo.browser") {
             _run();
         } else {
-            VO.log("不在浏览器中，运行结束");
+            VO.warning("不在浏览器中，运行结束");
         }
         VO.log("browser运行结束");
         home()
+        sleep(3000)
     },
     //将这个函数导出去让趣悦也使用
     browser_下载推荐应用领金币: (obj: any) => {

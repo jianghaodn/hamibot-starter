@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>登录页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        .container {
+            width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #ccc;
+            background-color: #fff;
+        }
+        .logo {
+            text-align: center;
+        }
+        .form {
+            margin-top: 20px;
+        }
+        .form-item {
+            margin-bottom: 10px;
+        }
+        .form-label {
+            display: inline-block;
+            width: 80px;
+            text-align: right;
+        }
+        .form-input {
+            display: inline-block;
+            width: 300px;
+            height: 30px;
+            border: none;
+            outline: none;
+            padding: 5px;
+            border-bottom: 2px solid #ccc;
+        }
+        .form-button {
+            display: block;
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3399ff;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+    <!-- <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+      }
+      .container {
+        width: 400px;
+        margin: 0 auto;
+        padding: 20px;
+        border: 1px solid #ccc;
+        background-color: #fff;
+      }
+      .logo {
+        text-align: center;
+      }
+      .form {
+        margin-top: 20px;
+      }
+      .form-item {
+        margin-bottom: 10px;
+      }
+      .form-label {
+        display: inline-block;
+        width: 80px;
+        text-align: right;
+      }
+      .form-input {
+        display: inline-block;
+        width: 300px;
+        height: 30px;
+        border: 1px solid #ccc;
+        padding: 5px;
+      }
+      .form-button {
+        display: block;
+        width: 100%;
+        height: 40px;
+        border: none;
+        background-color: #3399ff;
+        color: #fff;
+        font-size: 16px;
+        cursor: pointer;
+      }
+    </style> -->
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">
+        <img src="logo.png" alt="Logo" />
+      </div>
+      <div class="form">
+        <form id="login-form" method="post" action="login.php">
+          <div class="form-item">
+            <label class="form-label" for="username">用户名：</label>
+            <input
+              class="form-input"
+              type="text"
+              id="username"
+              name="username"
+              placeholder="请输入用户名"
+            />
+          </div>
+          <div class="form-item">
+            <label class="form-label" for="password">密码：</label>
+            <input
+              class="form-input"
+              type="password"
+              id="password"
+              name="password"
+              placeholder="请输入密码"
+            />
+          </div>
+          <div class="form-item">
+            <button class="form-button" type="submit" id="login-button">
+              登录
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script>
+      // 获取表单元素
+      var form = document.getElementById("login-form");
+      var username = document.getElementById("username");
+      var password = document.getElementById("password");
+      var button = document.getElementById("login-button");
+      form.addEventListener("submit", function (event) {
+        // 阻止默认提交行为
+        event.preventDefault();
+        // 获取表单数据
+        var data = {
+          username: username.value,
+          password: password.value,
+        };
+        // 发送Ajax请求
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "login.php");
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.send(JSON.stringify(data));
+        // 处理响应
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState == 4 && xhr.status == 200) {
+            // 解析响应数据
+            var response = JSON.parse(xhr.responseText);
+            // 判断登录结果
+            if (response.success) {
+              // 登录成功，跳转到主页
+              window.location.href = "index.html";
+            } else {
+              // 登录失败，显示错误信息
+              alert(response.message);
+            }
+          }
+        };
+      });
+    </script>
+  </body>
+</html>

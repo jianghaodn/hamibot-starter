@@ -53,6 +53,7 @@ const configure = {
     uninstall: true, //是否自动执行卸载（iqoo neo5无法弹出卸载框，暂时关闭自动卸载）
     uninstall_speed: 1, //卸载应用的速度，默认为1，低端机型卸载速度较慢，根据机型调高
     isFirstRun: true,
+    retry_count: 3,//重试的次数，运行没有达到就重试
     child_thread: {
         excep_handler: true, //处理异常情况的子线程
     },
@@ -88,7 +89,8 @@ const uninstall_point = {
 let app_lists = [];
 //已经运行过的app
 let hadRun = [];
-
+//是否正在体验app
+let is_expring = false
 
 let app_name_list_all = [];
 
@@ -96,17 +98,6 @@ let app_name_list_all = [];
  * 处理异常，防止有时候因为网络问题导致出现的访问异常的问题
  */
 function handle_exception() {
-    // function closeCancle() {
-    //     while (true) {
-    //         var cancle = textContains("取消");
-    //         cancle.waitFor();
-    //         if (!hasNode(textContains("要卸载此应用")))
-    //             //添加判断，如果是在卸载界面，则不点击取消，其他界面才点击取消
-    //             VO.clickNodeNotNull(cancle.findOnce());
-    //         sleep(timeOut);
-    //     }
-    // }
-    // start_thread(closeCancle);
 
     start_thread(function () {
         while (configure.child_thread.excep_handler) {
@@ -138,20 +129,22 @@ function handle_exception() {
         while (true) {
             sleep(1000);
             end++;
-            if (currentPackage() == wallet_packageName) {
+            if (currentPackage() === wallet_packageName) {
                 if (end - begin > max_wait_time) {
                     //卡在任务页了
                     VO.log("卡在等待页了");
-                    if (hasNode(text(download_pause))) {
+                    if (hasNode(text(download_pause), 10)) {
                         text(download_pause).findOne().click();
                         sleep(3 * 1000); //等待应用下载完毕
                     }
-                    if (hasNode(text(waiting_time))) {
+                    else if (hasNode(text(waiting_time), 10)) {
                         text(waiting_time).findOne().click();
                         sleep(10 * 1000); //等待应用下载完毕
                     } else {
                         VO.log("卡在其他页了");
-                        _back();
+                        if (!is_expring) {
+                            _back();
+                        }
                     }
                 }
             } else {
@@ -235,43 +228,46 @@ const task = () => {
      */
     const expr_app = (app_name, enter_btn) => {
         console.log("正在体验app:%s", app_name)
+        is_expring = true
         const launch_re = app.launchApp(app_name)
-        sleep(2000)
         const goal_package = app.getPackageName(app_name);
 
-        if (!goal_package) {
+        if (!goal_package || !launch_re) {
             VO.warning("这个应用是否正确下载？没有获取到呢", goal_package)
             return
         }
-        waitForPackage(goal_package, 5000)
+
+        VO.waitNode(packageName(goal_package), 5)
+        // VO.waitNode(goal_package, 5)
         let flag = true//运行成功与否
+        const expr_time = 15//体验app的时间
         //检测是否进入了app内
         if (currentPackage() === goal_package) {
             //进入成功
-            VO.sleep(15)
+            VO.sleep(expr_time)
         } else {
             //进入失败
             //更换进入方式
-            VO.log("launch app失败，更换为点击")
+            console.log("launch app失败，更换为点击")
             VO.clickNodeNotNull(enter_btn)
-            waitForPackage(goal_package, 5000)
+            VO.waitNode(packageName(goal_package), 5)
             if (currentPackage() === goal_package) {
-                VO.sleep(17)
+                VO.sleep(expr_time)
             } else {
                 //第二种方式失败
                 flag = false
+                is_expring = false
             }
         }
-
         if (flag) {
             //最终运行成功
             console.log("%s 运行成功", app_name)
             //返回
             backWalleWay.run()
-            sleep(1000)
-            waitForPackage(wallet_packageName, 3000)
+            VO.waitNode(packageName(wallet_packageName), 3)
         } else {
             VO.error("%s 运行失败", app_name)
+            is_expring = false
         }
         return flag
     }
@@ -307,12 +303,7 @@ const task = () => {
                 sleep(1000)
             } else if (r.text() === "去体验") {
                 VO.log("去体验")
-                //TODO 去体验
-                // VO.clickNodeNotNull(r)
                 const expr_re = expr_app(app_name, r)
-                //TODO 如果体验成功将app加到hadRun[],体验失败暂时不做处理
-                // if (expr_re) {
-                //体验完了将app名称加入到hadRun[]
                 hadRun.push(app_name)
                 sleep(1000)
                 // }
@@ -387,10 +378,8 @@ const run = () => {
         if (!VO.clickNodeNotNull(btn)) {
             VO.error("进入app失败，%s", str)
         }
-
         //进入了app，开始体验
-        VO.log("等待15秒")
-        sleep(15 * 1000)
+        VO.sleep(15)
 
         //体验完毕，记录app的名称
         save_app_name(str)
@@ -572,7 +561,16 @@ let backWalleWay = {
      * 返回钱包界面的第三种方式******默认使用第三种方式*********
      */
     three: function () {
-        app.launchPackage(wallet_packageName);
+        let count = 5
+        while (currentPackage() !== wallet_packageName && count--) {
+            console.log("当前app不是钱包，返回钱包")
+            sleep(3000)
+            app.launchPackage(wallet_packageName);
+        }
+        if(currentPackage() !== wallet_packageName){
+            console.error("返回钱包失败")
+            throw new Error("返回钱包失败")
+        }
     },
     run() {
         VO.log("运行第三种方法返回钱包")
@@ -605,7 +603,8 @@ function check_back() {
  * @param count 完成的数目，可选
  */
 function checkTaskNums(count?: number) {
-    return ((app_lists.length + hadRun.length) < (count || 10) && configure.isFirstRun)
+    // return ((app_lists.length + hadRun.length) < (count || 10) && configure.isFirstRun)
+    return ((app_lists.length + hadRun.length) < (count || 10) && configure.retry_count--)
 }
 
 const finish_text = "太厉害了，任务已全部完成！ 明天再来吧";
@@ -705,6 +704,8 @@ function enter_activity_1() {
     sleep(1000);
 }
 
+
+let check_isfinished_thread_run = true
 /**
  * 检查任务是否全部完成
  * @param {number} relay 是否延迟执行
@@ -712,7 +713,7 @@ function enter_activity_1() {
 function check_isfinished(relay) {
     VO.log("监测线程已经执行")
     sleep(10 * 1000)
-    while (true) {
+    while (check_isfinished_thread_run) {
         VO.log("检查任务是否完成");
         if (!at_main_page()) {
             VO.log("不在任务界面，等待返回任务界面");
@@ -738,7 +739,7 @@ function check_isfinished(relay) {
         }
         sleep(timeOut * 3);
     }
-    VO.log("监测线程结束");
+    VO.log("监测线程关闭");
 }
 
 /**
@@ -808,6 +809,8 @@ function auto_uninstall(app_name: string) {
     VO.log("准备卸载应用包");
     start_thread("卸载", "发现卸载", "成功卸载");
 
+    console.log("关闭监测线程")
+    check_isfinished_thread_run = false;
     if (app_name) {
         VO.openAppDetail(app_name);
         return;
@@ -1072,7 +1075,7 @@ function runMain() {
     enter_activity();
     try {
         let count = 0
-        while (configure.isMainThreadRun && count <3) {
+        while (configure.isMainThreadRun && count < 3) {
             // const re = run()
             const re = task()
             if (re == configure.debugMode.returnCode) {
@@ -1095,7 +1098,7 @@ function runMain() {
         VO.log(e);
     } finally {
         sleep(5000);
-        if (checkTaskNums()) {
+        if (checkTaskNums() || hadRun.length < app_name_list_all.length) {
             VO.log("任务数量还未达到10个，重复运行一次");
             configure.isMainThreadRun = true;
             configure.isFirstRun = false;

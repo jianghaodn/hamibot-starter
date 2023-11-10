@@ -38,7 +38,6 @@ export function init() {
         console.setPosition(0, 200);
         console.setSize(device.width/2, device.height / 4);
     }
-
-    setScreenMetrics(1260, 2800);
+    // setScreenMetrics(1260, 2800);
 }
 
