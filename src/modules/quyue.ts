@@ -30,20 +30,30 @@ activity_list.push(
 const _进入活动主页面 = () => {
     //TODO 进入活动主页面
 
-    let enter_state: ENTER
+    let enter_state: ENTER = ENTER.SUCCESS
     const re = app.launch("com.vivo.vreader")
     if (!re) {
-        console.error("打开 应用 失败")
+        console.error("打开 趣悦 失败")
         enter_state = ENTER.FAIL
     } else {
         VO.log("打开应用成功")
+        //关闭签到悬浮窗的线程
+        VO.runThread(() => {
+            while (enter_state === ENTER.SUCCESS) {
+                id("dialog_close").waitFor()
+                if (VO.waitNode(id("dialog_close"), 1000)) {
+                    VO.clickNode(id("dialog_close"))
+                    break
+                }
+                sleep(1000)
+            }
+        }, false)
         sleep(2000)
-        enter_state = ENTER.SUCCESS
         if (!VO.hasOne(id("cl_novel_search_bar_welfare_container"), 2000)) {
             //尝试进入活动页面
             if (VO.hasOne(goal_node, 10000)) {
                 VO.clickNode(goal_node)
-                if (!VO.hasOne(text("大额专区"),10000)) {
+                if (!VO.hasOne(text("大额专区"), 10000)) {
                     console.error("进入失败，无法进入")
                     enter_state = ENTER.FAIL
                 } else {
@@ -59,7 +69,7 @@ const _进入活动主页面 = () => {
     return enter_state
 }
 
-const 进入活动主页面 = ()=>{
+const 进入活动主页面 = () => {
     return VO.runWithCatch(_进入活动主页面)
 }
 
@@ -69,10 +79,10 @@ const _下应用领金币 = () => {
         ks: ['打开领奖', '搜索领奖'],
         data: [{
             name: "搜索领奖",
-            count: 30
+            count: 0
         }, {
             name: "打开领奖",
-            count: 20
+            count: 0
         }],
         all_count: 6,
         goalPage: id("gold_coin_chest_time")
@@ -128,10 +138,10 @@ const _看视频领海量金币 = () => {
                 VO.clickNode(enter_node)
                 VO.log("等待goalpage出现")
                 // goal_page.waitFor()
-                if(!VO.waitNode(goal_page,5)){
+                if (!VO.waitNode(goal_page, 5)) {
                     console.error("goalpage未出现")
                     state = false
-                }else{
+                } else {
                     VO.log("goalpage已经出现")
                 }
             }

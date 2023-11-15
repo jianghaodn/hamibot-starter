@@ -20,29 +20,11 @@ const configure = {
 }
 
 
-VO.runWithCatch(wallet.run)
-exit()
-try{
-    VO.runWithCatch(browser.run);
-}catch(error){
-    console.error(error)
-    //捕获到异常，重新运行一次
-    console.log("由于出现问题，重新运行一次")
-    VO.runWithCatch(browser.run);
-}finally{
-    //
-}
-try{
-    VO.runWithCatch(quyue.run);
-}catch(error){
-    console.error(error)
-    //捕获到异常，重新运行一次
-    console.log("由于出现问题，重新运行一次")
-    VO.runWithCatch(quyue.run);
-}finally{
-    //
-}
-
+// VO.runWithCatch(wallet.run)
+// exit()
+VO.runWithAgain(browser.run)
+VO.runWithAgain(quyue.run)
+VO.runWithAgain(wallet.run) 
 
 
 VO.log("任务已经全部运行完毕了")

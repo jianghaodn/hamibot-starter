@@ -152,7 +152,6 @@ class tool {
             sleep(1000)
             click_re = this.clickOnBound(node)
           } else {
-            this.log("click", node);
             click_re = true
           }
         }
@@ -196,8 +195,14 @@ class tool {
   };
 
   clickNode = (node: UiSelector) => {
-    const nodeInfo = node.findOne(10);
-    this.clickNodeNotNull(nodeInfo);
+    const nodeInfo = node.findOne(100);
+    if (!nodeInfo.clickable()) {
+      //节点不可点击
+      this.clickOnBound(nodeInfo)
+    } else {
+      this.clickNodeNotNull(nodeInfo);
+    }
+
   };
 
   backToPage = (pageNode: UiSelector, timeOut?: number) => {
@@ -324,7 +329,7 @@ class tool {
    * @param timeOut 超时时间，单位是秒
    * @returns 
    */
-  waitNode = (node: UiSelector, timeOut?: number,throw_e?:boolean,throw_msg?:string) => {
+  waitNode = (node: UiSelector, timeOut?: number, throw_e?: boolean, throw_msg?: string) => {
     if (!timeOut) {
       node.waitFor()
       return true
@@ -339,10 +344,23 @@ class tool {
       sleep(1000)
     }
 
-    if(throw_e){
+    if (throw_e) {
       throw new Error(throw_msg)
     }
     return false;
+  };
+
+  runWithAgain = (func: Function) => {
+    try {
+      VO.runWithCatch(func);
+    } catch (error) {
+      console.error(error)
+      //捕获到异常，重新运行一次
+      console.log("由于出现问题，重新运行一次")
+      VO.runWithCatch(func);
+    } finally {
+      console.log(`${func.name}运行完成`)
+    }
   }
 
 }

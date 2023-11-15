@@ -736,7 +736,6 @@ var tool = function () {
               sleep(1000);
               click_re = _this.clickOnBound(node);
             } else {
-              _this.log("click", node);
               click_re = true;
             }
           }
@@ -766,7 +765,7 @@ var tool = function () {
       return timeOut ? _this.hasOne(pageNode, timeOut) : pageNode && pageNode.exists();
     };
     this.clickNode = function (node) {
-      var nodeInfo = node.findOne(10);
+      var nodeInfo = node.findOne(100);
       _this.clickNodeNotNull(nodeInfo);
     };
     this.backToPage = function (pageNode, timeOut) {
@@ -869,6 +868,17 @@ var tool = function () {
       }
       return false;
     };
+    this.runWithAgain = function (func) {
+      try {
+        tool_VO.runWithCatch(func);
+      } catch (error) {
+        console.error(error);
+        console.log("由于出现问题，重新运行一次");
+        tool_VO.runWithCatch(func);
+      } finally {
+        console.log("".concat(func.name, "\u8FD0\u884C\u5B8C\u6210"));
+      }
+    };
   }
   tool.prototype.warning = function (msg) {
     var params = [];
@@ -949,7 +959,8 @@ var activity = function () {
 }();
 
 var activity_list = [];
-activity_list.push(new activity("点击搜索词领金币", text("随机搜索得金币")), new activity("下载推荐应用领金币", textContains("我要金币")), new activity("幸运抽大奖", textContains("去抽奖"), true), new activity("日常福利", undefined, false), new activity("逛一逛领金币", textContains("逛一逛")));
+activity_list.push(new activity("每日首次下载"), new activity("点击搜索词领金币", text("随机搜索得金币")), new activity("下载推荐应用领金币", textContains("我要金币")), new activity("幸运抽大奖", textContains("去抽奖"), true), new activity("日常福利", undefined, false), new activity("逛一逛领金币", textContains("逛一逛")));
+var browser_package = "com.vivo.browser";
 var _进入活动主页面 = function _进入活动主页面() {
   var _a;
   var goalPage = packageName("com.vivo.browser").text("下载应用赚金币");
@@ -991,7 +1002,7 @@ var _进入活动主页面 = function _进入活动主页面() {
           return enter_state;
         }
         enter_activity_running = false;
-        if (!tool_VO.atPage(goalPage, 5000)) {
+        if (!tool_VO.atPage(goalPage, 3000)) {
           var node = (_a = id("channel_image_view").findOne(1000)) === null || _a === void 0 ? void 0 : _a.parent();
           if (node) {
             tool_VO.clickNodeNotNull(node);
@@ -1062,8 +1073,12 @@ var 逛一逛领金币 = function 逛一逛领金币() {
         swipe_func();
       }
     }
-    tool_VO.log("等待", wait_time_sec, "秒");
-    sleep(wait_time_sec * 1000);
+    if (tool_VO.hasNode(coin_btn)) {
+      tool_VO.log("等待", wait_time_sec, "秒");
+      sleep(wait_time_sec * 1000);
+    } else {
+      break;
+    }
     console.log("等待完毕，继续运行");
   }
   tool_VO.log(Function.name, "运行完毕");
@@ -1079,19 +1094,29 @@ var 下载推荐应用领金币 = function 下载推荐应用领金币(obj) {
     f2_max = 30;
   var f1_single = 100,
     f2_single = 100;
-  var count = (obj === null || obj === void 0 ? void 0 : obj.all_count) || 5;
+  var count = (obj === null || obj === void 0 ? void 0 : obj.all_count) || 8;
   var running = true;
   var data = obj === null || obj === void 0 ? void 0 : obj.data;
   var get_run_count = function get_run_count() {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f;
     sleep(1000);
-    if (!tool_VO.hasOne(textContains("免费领奖"), 3000) && !tool_VO.hasOne(textContains("点击搜索词领金币"), 3000)) {
+    if (!tool_VO.hasOne(textContains("免费领奖"), 3000) && !tool_VO.hasOne(textMatches("点击搜索词.*领金币"), 3000)) {
       flag1 = f1_max = 0;
       f2_max = flag2 = 0;
       tool_VO.warning("没有任何任务");
       return;
     }
     var defaultWaitTime = 3000;
+    if (data && data.length) {
+      for (var _i = 0, data_1 = data; _i < data_1.length; _i++) {
+        var d = data_1[_i];
+        if (d.name === "打开领奖") {
+          f1_max = d.count;
+        } else if (d.name === "搜索领奖") {
+          f1_max = d.count;
+        }
+      }
+    }
     if (currentPackage() === PACKAGE.QUYUE) {
       if (tool_VO.hasOne(text("免费领奖"), defaultWaitTime)) {
         var count_node1 = (_b = (_a = text("免费领奖").findOne(3000)) === null || _a === void 0 ? void 0 : _a.parent()) === null || _b === void 0 ? void 0 : _b.child(2);
@@ -1100,6 +1125,9 @@ var 下载推荐应用领金币 = function 下载推荐应用领金币(obj) {
       }
       if (tool_VO.hasOne(text("点击搜索词并浏览8秒领金币"), defaultWaitTime)) {
         var count_node2 = (_d = (_c = className("android.widget.TextView").text("点击搜索词并浏览8秒领金币").findOne(3000)) === null || _c === void 0 ? void 0 : _c.parent()) === null || _d === void 0 ? void 0 : _d.child(9);
+        if (!count_node2 || !count_node2.text()) {
+          count_node2 = (_f = (_e = className("android.widget.TextView").text("点击搜索词并浏览8秒领金币").findOne(3000)) === null || _e === void 0 ? void 0 : _e.parent()) === null || _f === void 0 ? void 0 : _f.child(2);
+        }
         flag2 = parseInt((count_node2 === null || count_node2 === void 0 ? void 0 : count_node2.text().split("/")[0]) || "0") / f2_single;
         f2_max = parseInt((count_node2 === null || count_node2 === void 0 ? void 0 : count_node2.text().split("/")[1]) || "0") / f2_single;
       }
@@ -1121,16 +1149,6 @@ var 下载推荐应用领金币 = function 下载推荐应用领金币(obj) {
     tool_VO.log("更新运行次数：flag1 = ", flag1, ",f1_max = ", f1_max);
     tool_VO.log("更新运行次数：flag2 = ", flag2, ",f2_max = ", f2_max);
   };
-  if (data && data.length) {
-    for (var _i = 0, data_1 = data; _i < data_1.length; _i++) {
-      var d = data_1[_i];
-      if (d.name === "打开领奖") {
-        f1_max = d.count;
-      } else if (d.name === "搜索领奖") {
-        f1_max = d.count;
-      }
-    }
-  }
   var keys = (obj === null || obj === void 0 ? void 0 : obj.ks) || ["打开领奖", "搜索领奖"];
   tool_VO.log("运行任务keys:", keys.join("&"));
   var _loop_1 = function _loop_1() {
@@ -1162,8 +1180,8 @@ var 下载推荐应用领金币 = function 下载推荐应用领金币(obj) {
         sleep(100);
       }
     }, false);
-    for (var _a = 0, keys_1 = keys; _a < keys_1.length; _a++) {
-      var key = keys_1[_a];
+    for (var _i = 0, keys_1 = keys; _i < keys_1.length; _i++) {
+      var key = keys_1[_i];
       if (flag1 >= f1_max && flag2 >= f2_max) {
         return "break-flag";
       }
@@ -1239,7 +1257,7 @@ var 点击搜索词领金币 = function 点击搜索词领金币() {
   var getSearchCount = function getSearchCount() {
     if (currentPackage() === "com.vivo.browser") {
       var count_node = textContains("搜索1次得");
-      if (tool_VO.hasNode(count_node)) {
+      if (tool_VO.hasOne(count_node, 1000)) {
         try {
           var nodeinfo = textContains("搜索1次得").findOne(1000);
           var node_arr = nodeinfo === null || nodeinfo === void 0 ? void 0 : nodeinfo.text().split("/");
@@ -1266,7 +1284,7 @@ var 点击搜索词领金币 = function 点击搜索词领金币() {
       var sleep_time = 12 * MS;
       while (count--) {
         node.waitFor();
-        tool_VO.clickNodeNotNull(node.findOne(1000));
+        tool_VO.clickNode(node);
         tool_VO.log("\u7B49\u5F85".concat(sleep_time / MS, "\u79D2"));
         sleep(sleep_time);
         random_swipe();
@@ -1283,11 +1301,47 @@ var 点击搜索词领金币 = function 点击搜索词领金币() {
   random_search();
   finish();
 };
+var firstEnterDownloadApp = function firstEnterDownloadApp() {
+  var title_id = id("dialog_title");
+  var close_id = id("dialog_close");
+  var name_id = id(" tv_novel_dialog_daily_app_name");
+  var download_id = id("novel_daily_dialog_download_btn");
+  var run = function run() {
+    tool_VO.hasNode(download_id) && download_id.findOnce().text() === "下载应用" && tool_VO.clickNode(download_id);
+    tool_VO.runThread(function () {
+      var start_time = Date.now();
+      while (true) {
+        text("直接安装").waitFor();
+        sleep(1000);
+        tool_VO.clickNode(text("直接安装"));
+        toastLog("正在使用移动网络下载应用");
+        break;
+      }
+    });
+    while (download_id.findOnce().text() !== "打开领奖") {
+      sleep(2000);
+    }
+    sleep(1000);
+    tool_VO.clickNode(download_id);
+    sleep(2000);
+    app.launch(browser_package);
+    if (!tool_VO.waitNode(packageName(browser_package), 5000)) {
+      _进入活动主页面();
+    }
+  };
+  if (tool_VO.hasOne(title_id, 2000) && tool_VO.hasOne(close_id, 1000) && tool_VO.hasOne(name_id, 1000) && tool_VO.hasOne(download_id, 1000)) {
+    sleep(1000);
+    run();
+    sleep(2000);
+  }
+};
 var 去抽奖 = function 去抽奖() {};
 var _run = function _run() {
   for (var _i = 0, activity_list_1 = activity_list; _i < activity_list_1.length; _i++) {
     var app_1 = activity_list_1[_i];
-    if (app_1.name === "逛一逛领金币") {
+    if (app_1.name === "每日首次下载") {
+      tool_VO.runWithCatch(firstEnterDownloadApp);
+    } else if (app_1.name === "逛一逛领金币") {
       tool_VO.runWithCatch(逛一逛领金币);
     } else if (app_1.name === "下载推荐应用领金币") {
       tool_VO.runWithCatch(下载推荐应用领金币);
@@ -1380,15 +1434,24 @@ var quyue_activity_list = [];
 var goal_node = id("welfare_txt").text("福利");
 quyue_activity_list.push(new activity_quyue("下应用领金币", text("我要金币-按钮-点按两次即可激活"), 6, true), new activity_quyue("看视频领海量金币", text("立即观看-按钮-点按两次即可激活"), -1), new activity_quyue("点击搜索领金币", text("随机搜索得金币"), 30));
 var quyue_ = function _进入活动主页面() {
-  var enter_state;
+  var enter_state = ENTER.SUCCESS;
   var re = app.launch("com.vivo.vreader");
   if (!re) {
-    console.error("打开 应用 失败");
+    console.error("打开 趣悦 失败");
     enter_state = ENTER.FAIL;
   } else {
     tool_VO.log("打开应用成功");
+    tool_VO.runThread(function () {
+      while (enter_state === ENTER.SUCCESS) {
+        id("dialog_close").waitFor();
+        if (tool_VO.waitNode(id("dialog_close"), 1000)) {
+          tool_VO.clickNode(id("dialog_close"));
+          break;
+        }
+        sleep(1000);
+      }
+    }, false);
     sleep(2000);
-    enter_state = ENTER.SUCCESS;
     if (!tool_VO.hasOne(id("cl_novel_search_bar_welfare_container"), 2000)) {
       if (tool_VO.hasOne(goal_node, 10000)) {
         tool_VO.clickNode(goal_node);
@@ -1413,10 +1476,10 @@ var _下应用领金币 = function _下应用领金币() {
     ks: ['打开领奖', '搜索领奖'],
     data: [{
       name: "搜索领奖",
-      count: 30
+      count: 0
     }, {
       name: "打开领奖",
-      count: 20
+      count: 0
     }],
     all_count: 6,
     goalPage: id("gold_coin_chest_time")
@@ -1605,7 +1668,7 @@ var configure = {
     returnCode: -1
   },
   file: {
-    save_url: "/sdcard/hamibotVO.logs/",
+    save_url: "/sdcard/hamibot_logs/",
     data: {
       runtime: "",
       app_lists: [],
@@ -1693,10 +1756,9 @@ var task = function task() {
       tool_VO.warning("这个应用是否正确下载？没有获取到呢", goal_package);
       return;
     }
-    tool_VO.waitNode(packageName(goal_package), 5);
     var flag = true;
     var expr_time = 15;
-    if (currentPackage() === goal_package) {
+    if (tool_VO.waitNode(packageName(goal_package), 5)) {
       tool_VO.sleep(expr_time);
     } else {
       console.log("launch app失败，更换为点击");
@@ -1976,7 +2038,7 @@ function enter_activity(isFirst) {
   enter_activity_1();
   packageName(wallet_packageName).text(exchange).waitFor();
   tool_VO.log("已经进入了活动页面，开始任务");
-  sleep(timeOut * 2);
+  sleep(timeOut * 3);
   start_thread(check_isfinished, "", "", undefined, 10 * 1000);
 }
 function enter_activity_1() {
@@ -2020,7 +2082,7 @@ function check_isfinished(relay) {
     } else {
       tool_VO.log("继续运行");
     }
-    sleep(timeOut * 3);
+    sleep(timeOut * 2);
   }
   tool_VO.log("监测线程关闭");
 }
@@ -2077,11 +2139,11 @@ function auto_uninstall(app_name) {
     var v = hadRun_1[_i];
     v && app_lists.indexOf(v) === -1 && app_lists.push(v);
   }
-  tool_VO.log("需要卸载的全部app有:" + hadRun.toLocaleString());
+  tool_VO.log("\u9700\u8981\u5378\u8F7D\u7684\u5168\u90E8app\u6709:".concat(hadRun.toLocaleString()));
   hadRun.forEach(function (v, i) {
     var app_name = v;
     if (app_name) {
-      tool_VO.log("准备卸载第", i + 1, "个应用:", app_name);
+      tool_VO.log("\u51C6\u5907\u5378\u8F7D\u7B2C".concat(i + 1, "\u4E2A\u5E94\u7528:"), app_name);
       var re_1 = tool_VO.openAppDetail(app_name);
       console.log("%s 卸载完成", app_name);
       re_1 && sleep(timeOut * configure.uninstall_speed);
@@ -2255,11 +2317,12 @@ function runMain() {
     tool_VO.log(e);
   } finally {
     sleep(5000);
-    if (checkTaskNums() || hadRun.length < app_name_list_all.length) {
+    if (checkTaskNums() && hadRun.length < app_name_list_all.length) {
       tool_VO.log("任务数量还未达到10个，重复运行一次");
       configure.isMainThreadRun = true;
       configure.isFirstRun = false;
       closeWalletApp();
+      check_isfinished_thread_run = false;
       tool_VO.log("等待10s再运行");
       sleep(10 * 1000);
       runMain();
@@ -2329,22 +2392,9 @@ init();
 var src_configure = {
   show_console: true
 };
-tool_VO.runWithCatch(wallet.run);
-exit();
-try {
-  tool_VO.runWithCatch(browser.run);
-} catch (error) {
-  console.error(error);
-  console.log("由于出现问题，重新运行一次");
-  tool_VO.runWithCatch(browser.run);
-} finally {}
-try {
-  tool_VO.runWithCatch(quyue.run);
-} catch (error) {
-  console.error(error);
-  console.log("由于出现问题，重新运行一次");
-  tool_VO.runWithCatch(quyue.run);
-} finally {}
+tool_VO.runWithAgain(browser.run);
+tool_VO.runWithAgain(quyue.run);
+tool_VO.runWithAgain(wallet.run);
 tool_VO.log("任务已经全部运行完毕了");
 tool_VO.log("脚本窗口将在10秒后关闭");
 sleep(10 * 1000);

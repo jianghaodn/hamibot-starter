@@ -66,7 +66,7 @@ const configure = {
     }, //调试模式,调试模式下运行一个任务就结束
 
     file: {
-        save_url: "/sdcard/hamibotVO.logs/",
+        save_url: "/sdcard/hamibot_logs/",
         data: {
             runtime: "",
             app_lists: [],
@@ -237,12 +237,10 @@ const task = () => {
             return
         }
 
-        VO.waitNode(packageName(goal_package), 5)
-        // VO.waitNode(goal_package, 5)
         let flag = true//运行成功与否
         const expr_time = 15//体验app的时间
         //检测是否进入了app内
-        if (currentPackage() === goal_package) {
+        if (VO.waitNode(packageName(goal_package), 5)) {
             //进入成功
             VO.sleep(expr_time)
         } else {
@@ -664,7 +662,7 @@ function enter_activity(isFirst) {
     enter_activity_1();
     packageName(wallet_packageName).text(exchange).waitFor();
     VO.log("已经进入了活动页面，开始任务");
-    sleep(timeOut * 2);
+    sleep(timeOut * 3);
 
     start_thread(check_isfinished, "", "", undefined, 10 * 1000);
 }
@@ -737,7 +735,7 @@ function check_isfinished(relay) {
             // VO.log("还有任务没有完成，继续运行");
             VO.log("继续运行");
         }
-        sleep(timeOut * 3);
+        sleep(timeOut * 2);
     }
     VO.log("监测线程关闭");
 }
@@ -826,13 +824,12 @@ function auto_uninstall(app_name: string) {
         for (const v of hadRun) {
             v && app_lists.indexOf(v) === -1 && app_lists.push(v);
         }
-    VO.log("需要卸载的全部app有:" + hadRun.toLocaleString());
+    VO.log(`需要卸载的全部app有:${hadRun.toLocaleString()}`);
     hadRun.forEach((v, i) => {
         let app_name: string = v;
         if (app_name) {
-            VO.log("准备卸载第", (i + 1), "个应用:", app_name);
+            VO.log(`准备卸载第${i+1}个应用:`, app_name);
             const re = VO.openAppDetail(app_name);
-            // VO.waitNode(text(app_name), 3000)
             console.log("%s 卸载完成", app_name);
             re && sleep(timeOut * configure.uninstall_speed);
         }
@@ -1098,11 +1095,12 @@ function runMain() {
         VO.log(e);
     } finally {
         sleep(5000);
-        if (checkTaskNums() || hadRun.length < app_name_list_all.length) {
+        if (checkTaskNums() &&  hadRun.length < app_name_list_all.length) {
             VO.log("任务数量还未达到10个，重复运行一次");
             configure.isMainThreadRun = true;
             configure.isFirstRun = false;
             closeWalletApp();
+            check_isfinished_thread_run = false;
             VO.log("等待10s再运行")
             sleep(10 * 1000)
             runMain();
