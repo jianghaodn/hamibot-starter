@@ -2,12 +2,12 @@
  * @Author: BATU1579
  * @CreateDate: 2022-06-03 01:16:42
  * @LastEditor: BATU1579
- * @LastTime: 2022-10-23 22:32:24
+ * @LastTime: 2022-10-25 15:41:43
  * @FilePath: \\types\\ocr.d.ts
  * @Description: 文字识别模块
  */
 declare module 'ocr' {
-    import { BaseImage } from "images";
+    import { BaseImage } from 'images';
 
     global {
         /**

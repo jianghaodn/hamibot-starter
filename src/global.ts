@@ -81,9 +81,9 @@ if (_TOKEN && _TOKEN !== "" && setToken(_TOKEN) == false) {
 }
 
 // show console
-if (typeof _SHOW_CONSOLE !== "boolean") {
-    throw new ConfigInvalidException("show console");
-}
+// if (typeof _SHOW_CONSOLE !== "boolean") {
+//     throw new ConfigInvalidException("show console");
+// }
 export const SHOW_CONSOLE = _SHOW_CONSOLE;
 
 Record.info("Start running script");

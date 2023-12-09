@@ -3,7 +3,7 @@
  * @Date: 2022-06-09 13:31:45
  * @LastEditors: BATU1579
  * @LastEditTime: 2022-06-10 09:53:47
- * @FilePath: \\src\\types\\images.d.ts
+ * @FilePath: \\types\\images.d.ts
  * @Description: 图像操作模块
  * 
  * Copyright (c) 2022 by Hamibot hello@hamibot.com, All Rights Reserved. 

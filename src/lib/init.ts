@@ -39,5 +39,5 @@ export function init() {
         console.setSize(device.width, device.height / 4);
     }
 
-    setScreenMetrics(1080, 2400);
+    // setScreenMetrics(1080, 2400);
 }
